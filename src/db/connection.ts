@@ -10,22 +10,16 @@ const pool = mysql.createPool({
   user: process.env.DB_USER || "root",
 
   password: process.env.DB_PASSWORD || "",
-
   database: process.env.DB_NAME || "news_api",
-
-
   connectionLimit: 10,
 
   waitForConnections: true,
 
-
   queueLimit: 0,
 });
 
-
 export async function testConnection(): Promise<boolean> {
   try {
-    
     const connection = await pool.getConnection();
 
     console.log("✅ Database connection successful!");
@@ -34,7 +28,6 @@ export async function testConnection(): Promise<boolean> {
 
     return true;
   } catch (error) {
-
     console.error("❌ Database connection failed!");
     console.error("Error details:", error);
     console.error("\n📋 Troubleshooting checklist:");
@@ -42,11 +35,12 @@ export async function testConnection(): Promise<boolean> {
     console.error("   2. Did you create a .env file from .env.example?");
     console.error("   3. Are your database credentials correct in .env?");
     console.error('   4. Did you create the "news_api" database?');
-    console.error("   5. Did you run the database.sql file in MySQL Workbench?");
+    console.error(
+      "   5. Did you run the database.sql file in MySQL Workbench?"
+    );
 
     return false;
   }
 }
-
 
 export { pool };

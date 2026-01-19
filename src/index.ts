@@ -2,29 +2,26 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import dotenv from "dotenv";
 import { testConnection } from "./db/connection.js";
-
+import { authRoutes } from "./routes/auth.js";
 
 dotenv.config();
 
 const app = new Hono();
 
 app.get("/", (c) => {
-
   return c.json({
     message: "Welcome to the News API!",
     status: "Server is running",
     version: "1.0.0",
     endpoints: {
-      // TODO: These endpoints will be implemented in Phase 2
       health: "GET /",
-      register: "POST /auth/register (coming in Phase 2)",
-      login: "POST /auth/login (coming in Phase 2)",
-      getArticles: "GET /articles (coming in Phase 2)",
-      createArticle: "POST /articles (coming in Phase 2)",
+      register: "POST /auth/register",
+      login: "POST /auth/login",
+      getArticles: "GET /articles (coming in Phase 3)",
+      createArticle: "POST /articles (coming in Phase 3)",
     },
   });
 });
-
 
 app.get("/health", async (c) => {
   const dbConnected = await testConnection();
@@ -36,7 +33,6 @@ app.get("/health", async (c) => {
       timestamp: new Date().toISOString(),
     });
   } else {
-   
     return c.json(
       {
         status: "unhealthy",
@@ -48,13 +44,12 @@ app.get("/health", async (c) => {
   }
 });
 
+app.route("/auth", authRoutes);
 
 const PORT = Number(process.env.PORT) || 3000;
 
-
 console.log("🚀 Starting News API server...");
 console.log(`📍 Server will run on: http://localhost:${PORT}`);
-
 
 testConnection().then((connected) => {
   if (!connected) {
@@ -63,7 +58,6 @@ testConnection().then((connected) => {
   }
 });
 
-
 serve({
   fetch: app.fetch,
   port: PORT,
@@ -71,6 +65,12 @@ serve({
 
 console.log(`✅ Server is running on http://localhost:${PORT}`);
 console.log("\n📝 Available endpoints:");
-console.log(`   GET  http://localhost:${PORT}/        - Welcome message`);
-console.log(`   GET  http://localhost:${PORT}/health  - Database health check`);
+console.log(`   GET  http://localhost:${PORT}/              - Welcome message`);
+console.log(
+  `   GET  http://localhost:${PORT}/health        - Database health check`
+);
+console.log(
+  `   POST http://localhost:${PORT}/auth/register - Register new user`
+);
+console.log(`   POST http://localhost:${PORT}/auth/login    - Login user`);
 console.log("\nPress Ctrl+C to stop the server.");
