@@ -1,0 +1,8 @@
+# This file ensures the routes folder is tracked by Git
+# Empty folders are ignored by Git, so we add this placeholder
+#
+# In Phase 2, this folder will contain:
+# - auth.ts    (registration and login routes)
+# - articles.ts (article CRUD routes)
+#
+# You can delete this file once you add actual route files

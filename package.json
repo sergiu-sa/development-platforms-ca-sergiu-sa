@@ -1,0 +1,32 @@
+{
+  "name": "news-api",
+  "version": "1.0.0",
+  "description": "A REST API for a news platform - Development Platforms Course Assignment",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "hono",
+    "api",
+    "typescript",
+    "mysql"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "hono": "^4.4.0",
+    "@hono/zod-validator": "^0.2.2",
+    "mysql2": "^3.9.0",
+    "dotenv": "^16.4.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.12.0",
+    "tsx": "^4.10.0"
+  }
+}
