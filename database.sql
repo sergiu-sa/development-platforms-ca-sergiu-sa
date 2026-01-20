@@ -3,7 +3,6 @@ USE news_api;
 
 
 CREATE TABLE IF NOT EXISTS users (
-  
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
@@ -11,9 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 
-
 CREATE TABLE IF NOT EXISTS articles (
-   
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     body TEXT NOT NULL,
@@ -25,8 +22,6 @@ CREATE TABLE IF NOT EXISTS articles (
 
 INSERT INTO users (email, password_hash) VALUES
 ('test@test.com', '$2b$10$rQZ5hGz5Z5Z5Z5Z5Z5Z5ZOxK5K5K5K5K5K5K5K5K5K5K5K5K5K5K5');
-
-
 
 INSERT INTO articles (title, body, category, submitted_by) VALUES
 (

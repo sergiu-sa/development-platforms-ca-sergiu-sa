@@ -43,11 +43,8 @@ articleRoutes.get("/", async (c) => {
 
 articleRoutes.post(
   "/",
-
   authMiddleware,
-
   zValidator("json", createArticleSchema),
-
   async (c) => {
     try {
       const { title, body, category } = c.req.valid("json");
