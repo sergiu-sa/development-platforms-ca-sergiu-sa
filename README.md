@@ -7,6 +7,7 @@ A REST API for a news platform built with Hono, TypeScript, and MySQL.
 This project is a backend API that allows users to register, login, and manage news articles. It demonstrates fundamental concepts of building secure, authenticated APIs.
 
 **Tech Stack:**
+
 - **Framework:** Hono (TypeScript)
 - **Database:** MySQL
 - **Validation:** Zod

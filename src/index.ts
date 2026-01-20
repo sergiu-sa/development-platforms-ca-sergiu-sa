@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import dotenv from "dotenv";
 import { testConnection } from "./db/connection.js";
 import { authRoutes } from "./routes/auth.js";
+import { articleRoutes } from "./routes/articles.js";
 
 dotenv.config();
 
@@ -17,8 +18,8 @@ app.get("/", (c) => {
       health: "GET /",
       register: "POST /auth/register",
       login: "POST /auth/login",
-      getArticles: "GET /articles (coming in Phase 3)",
-      createArticle: "POST /articles (coming in Phase 3)",
+      getArticles: "GET /articles (public)",
+      createArticle: "POST /articles (requires auth)",
     },
   });
 });
@@ -45,6 +46,8 @@ app.get("/health", async (c) => {
 });
 
 app.route("/auth", authRoutes);
+
+app.route("/articles", articleRoutes);
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -73,4 +76,10 @@ console.log(
   `   POST http://localhost:${PORT}/auth/register - Register new user`
 );
 console.log(`   POST http://localhost:${PORT}/auth/login    - Login user`);
+console.log(
+  `   GET  http://localhost:${PORT}/articles      - Get all articles (public)`
+);
+console.log(
+  `   POST http://localhost:${PORT}/articles      - Create article (auth required)`
+);
 console.log("\nPress Ctrl+C to stop the server.");

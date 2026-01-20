@@ -8,61 +8,56 @@ import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 const authRoutes = new Hono();
 
-authRoutes.post(
-  "/register",
+authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
+  try {
+    const { email, password } = c.req.valid("json");
 
-  zValidator("json", registerSchema),
-  async (c) => {
-    try {
-      const { email, password } = c.req.valid("json");
+    const [existingUsers] = await pool.query<RowDataPacket[]>(
+      "SELECT id FROM users WHERE email = ?",
+      [email]
+    );
 
-      const [existingUsers] = await pool.query<RowDataPacket[]>(
-        "SELECT id FROM users WHERE email = ?",
-        [email]
-      );
-
-      if (existingUsers.length > 0) {
-        return c.json(
-          {
-            success: false,
-            message: "A user with this email already exists",
-          },
-          409
-        );
-      }
-
-      const saltRounds = 10;
-      const passwordHash = await bcrypt.hash(password, saltRounds);
-
-      const [result] = await pool.query<ResultSetHeader>(
-        "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-        [email, passwordHash]
-      );
-
-      return c.json(
-        {
-          success: true,
-          message: "User registered successfully",
-          user: {
-            id: result.insertId,
-            email: email,
-          },
-        },
-        201 // 201 = Created
-      );
-    } catch (error) {
-      console.error("Registration error:", error);
-
+    if (existingUsers.length > 0) {
       return c.json(
         {
           success: false,
-          message: "An error occurred during registration",
+          message: "A user with this email already exists",
         },
-        500
+        409
       );
     }
+
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    const [result] = await pool.query<ResultSetHeader>(
+      "INSERT INTO users (email, password_hash) VALUES (?, ?)",
+      [email, passwordHash]
+    );
+
+    return c.json(
+      {
+        success: true,
+        message: "User registered successfully",
+        user: {
+          id: result.insertId,
+          email: email,
+        },
+      },
+      201
+    );
+  } catch (error) {
+    console.error("Registration error:", error);
+
+    return c.json(
+      {
+        success: false,
+        message: "An error occurred during registration",
+      },
+      500
+    );
   }
-);
+});
 
 authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
   try {
@@ -84,7 +79,6 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
     }
 
     const user = users[0];
-
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
