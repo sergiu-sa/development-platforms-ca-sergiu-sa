@@ -85,17 +85,16 @@ curl -X POST https://development-platforms-ca-sergiu-sa-production.up.railway.ap
    Open `.env` and fill in your MySQL password:
 
    ```env
+   MYSQLHOST=localhost
+   MYSQLPORT=3306
+   MYSQLUSER=root
+   MYSQLPASSWORD=your_password_here
+   MYSQLDATABASE=news_api
    PORT=3000
-   DB_HOST=localhost
-   DB_PORT=3306
-   DB_USER=root
-   DB_PASSWORD=your_password_here
-   DB_NAME=news_api
    JWT_SECRET=make_this_a_long_random_string
    ```
 
 3. **Create the database**
-
    - Open MySQL Workbench
    - Run the `database.sql` file (it creates everything for you)
 
@@ -174,14 +173,14 @@ Use Thunder Client (VS Code extension) or Postman:
 
 ```md
 src/
-├── index.ts           # Main server file
-├── config/env.ts      # Environment validation
-├── db/connection.ts   # Database connection
+├── index.ts # Main server file
+├── config/env.ts # Environment validation
+├── db/connection.ts # Database connection
 ├── routes/
-│   ├── auth.ts        # Register & login
-│   └── articles.ts    # Get & create articles
+│ ├── auth.ts # Register & login
+│ └── articles.ts # Get & create articles
 ├── middleware/auth.ts # Checks if user is logged in
-└── schemas/           # Validates incoming data
+└── schemas/ # Validates incoming data
 ```
 
 ## License
