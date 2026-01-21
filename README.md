@@ -11,9 +11,52 @@ This project is a backend API that allows users to register, login, and manage n
 - **Framework:** Hono (TypeScript)
 - **Database:** MySQL
 - **Validation:** Zod
-- **Authentication:** JWT (JSON Web Tokens)
+- **Authentication:** JWT
 
-Built for the **Development Platforms Course Assignment**.
+### Built for Development Platforms Course
+
+## Live Deployment
+
+**Live API:** https://development-platforms-ca-sergiu-sa-production.up.railway.app
+
+### Quick Test
+
+- **Health Check:** [GET /health](https://development-platforms-ca-sergiu-sa-production.up.railway.app/health)
+- **View Articles:** [GET /articles](https://development-platforms-ca-sergiu-sa-production.up.railway.app/articles)
+- **API Info:** [GET /](https://development-platforms-ca-sergiu-sa-production.up.railway.app/)
+
+### Test the Full API
+
+Use Thunder Client, Postman, or curl to test all endpoints:
+
+```bash
+# Register a new user
+curl -X POST https://development-platforms-ca-sergiu-sa-production.up.railway.app/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}'
+
+# Login and get token
+curl -X POST https://development-platforms-ca-sergiu-sa-production.up.railway.app/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}'
+
+# Create an article (use the token from login)
+curl -X POST https://development-platforms-ca-sergiu-sa-production.up.railway.app/articles \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{"title":"Test Article","body":"Article content here","category":"Tech"}'
+```
+
+---
+
+## Deployment Details
+
+- **Platform:** Railway
+- **Database:** MySQL (managed by Railway)
+- **Region:** US-West
+- **Status:** Active
+
+---
 
 ## Setup
 
