@@ -79,6 +79,7 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
     }
 
     const user = users[0];
+
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {

@@ -5,6 +5,7 @@ dotenv.config();
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
+
   port: Number(process.env.DB_PORT) || 3306,
 
   user: process.env.DB_USER || "root",
@@ -12,10 +13,11 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "news_api",
   connectionLimit: 10,
-
   waitForConnections: true,
-
   queueLimit: 0,
+  connectTimeout: 10000,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000,
 });
 
 export async function testConnection(): Promise<boolean> {

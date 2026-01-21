@@ -1,0 +1,21 @@
+# Files and folders to exclude from Docker builds
+
+node_modules/
+.env
+.env.local
+.env.*.local
+dist/
+NOTES.md
+*.log
+npm-debug.log*
+.git/
+.gitignore
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+coverage/
+*.test.ts
+*.spec.ts
+database.sql

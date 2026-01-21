@@ -1,13 +1,16 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import dotenv from "dotenv";
-import { testConnection } from "./db/connection.js";
+import { cors } from "hono/cors";
+import { validateEnv, config } from "./config/env.js";
+import { pool, testConnection } from "./db/connection.js";
 import { authRoutes } from "./routes/auth.js";
 import { articleRoutes } from "./routes/articles.js";
 
-dotenv.config();
+validateEnv();
 
 const app = new Hono();
+
+app.use("/*", cors());
 
 app.get("/", (c) => {
   return c.json({
@@ -25,15 +28,17 @@ app.get("/", (c) => {
 });
 
 app.get("/health", async (c) => {
-  const dbConnected = await testConnection();
+  try {
+    await pool.query("SELECT 1");
 
-  if (dbConnected) {
     return c.json({
       status: "healthy",
       database: "connected",
       timestamp: new Date().toISOString(),
     });
-  } else {
+  } catch (error) {
+    console.error("Health check failed:", error);
+
     return c.json(
       {
         status: "unhealthy",
@@ -49,7 +54,7 @@ app.route("/auth", authRoutes);
 
 app.route("/articles", articleRoutes);
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = config.port;
 
 console.log("🚀 Starting News API server...");
 console.log(`📍 Server will run on: http://localhost:${PORT}`);
