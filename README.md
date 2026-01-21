@@ -132,6 +132,7 @@ Use Thunder Client (VS Code extension) or Postman:
 ```md
 src/
 ├── index.ts           # Main server file
+├── config/env.ts      # Environment validation
 ├── db/connection.ts   # Database connection
 ├── routes/
 │   ├── auth.ts        # Register & login

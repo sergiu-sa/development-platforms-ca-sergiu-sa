@@ -1,3 +1,8 @@
+/**
+ * Environment Variable Validation
+ * Validates required env vars at startup and exports typed config.
+ */
+
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -10,6 +15,7 @@ const requiredEnvVars = [
   "JWT_SECRET",
 ];
 
+// Validates all required environment variables are set
 export function validateEnv(): void {
   const missing: string[] = [];
 
@@ -31,7 +37,6 @@ export function validateEnv(): void {
     console.error("   2. Fill in the missing values");
     console.error("   3. Restart the server");
     console.error("");
-
     process.exit(1);
   }
 
@@ -40,7 +45,6 @@ export function validateEnv(): void {
 
 export const config = {
   port: Number(process.env.PORT) || 3000,
-
   db: {
     host: process.env.DB_HOST || "localhost",
     port: Number(process.env.DB_PORT) || 3306,
@@ -48,8 +52,6 @@ export const config = {
     password: process.env.DB_PASSWORD || "",
     name: process.env.DB_NAME || "news_api",
   },
-
   jwtSecret: process.env.JWT_SECRET || "",
-
   isProduction: process.env.NODE_ENV === "production",
 };

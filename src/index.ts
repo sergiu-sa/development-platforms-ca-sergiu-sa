@@ -1,3 +1,7 @@
+/**
+ * News API - Main Server Entry Point
+ */
+
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { cors } from "hono/cors";
@@ -10,8 +14,10 @@ validateEnv();
 
 const app = new Hono();
 
+// CORS - allows frontend apps from different domains to call this API
 app.use("/*", cors());
 
+// Welcome route
 app.get("/", (c) => {
   return c.json({
     message: "Welcome to the News API!",
@@ -27,10 +33,10 @@ app.get("/", (c) => {
   });
 });
 
+// Health check endpoint for monitoring
 app.get("/health", async (c) => {
   try {
     await pool.query("SELECT 1");
-
     return c.json({
       status: "healthy",
       database: "connected",
@@ -38,7 +44,6 @@ app.get("/health", async (c) => {
     });
   } catch (error) {
     console.error("Health check failed:", error);
-
     return c.json(
       {
         status: "unhealthy",
@@ -50,10 +55,11 @@ app.get("/health", async (c) => {
   }
 });
 
+// Mount route modules
 app.route("/auth", authRoutes);
-
 app.route("/articles", articleRoutes);
 
+// Start server
 const PORT = config.port;
 
 console.log("🚀 Starting News API server...");

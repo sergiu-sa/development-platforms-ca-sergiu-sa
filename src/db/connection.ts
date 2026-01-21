@@ -1,3 +1,8 @@
+/**
+ * Database Connection Module
+ * MySQL connection pool with production-ready settings.
+ */
+
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
 
@@ -5,11 +10,8 @@ dotenv.config();
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
-
   port: Number(process.env.DB_PORT) || 3306,
-
   user: process.env.DB_USER || "root",
-
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "news_api",
   connectionLimit: 10,
@@ -20,14 +22,12 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 10000,
 });
 
+// Test connection on startup
 export async function testConnection(): Promise<boolean> {
   try {
     const connection = await pool.getConnection();
-
     console.log("✅ Database connection successful!");
-
     connection.release();
-
     return true;
   } catch (error) {
     console.error("❌ Database connection failed!");
@@ -40,7 +40,6 @@ export async function testConnection(): Promise<boolean> {
     console.error(
       "   5. Did you run the database.sql file in MySQL Workbench?"
     );
-
     return false;
   }
 }

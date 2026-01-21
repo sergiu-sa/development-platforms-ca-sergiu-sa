@@ -1,3 +1,7 @@
+/**
+ * Article Validation Schema
+ */
+
 import { z } from "zod";
 
 export const ARTICLE_CATEGORIES = [

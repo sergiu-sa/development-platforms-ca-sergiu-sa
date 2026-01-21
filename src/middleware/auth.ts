@@ -1,3 +1,9 @@
+/**
+ * JWT Authentication Middleware
+ * Protects routes that require authentication.
+ * Expects: Authorization: Bearer <token>
+ */
+
 import { Context, Next } from "hono";
 import jwt from "jsonwebtoken";
 
@@ -8,6 +14,7 @@ export interface JWTPayload {
   exp?: number;
 }
 
+// Extend Hono's context to include user data
 declare module "hono" {
   interface ContextVariableMap {
     user: JWTPayload;
@@ -29,7 +36,6 @@ export async function authMiddleware(c: Context, next: Next) {
   }
 
   const token = authHeader.split(" ")[1];
-
   const jwtSecret = process.env.JWT_SECRET;
 
   if (!jwtSecret) {
@@ -45,9 +51,7 @@ export async function authMiddleware(c: Context, next: Next) {
 
   try {
     const decoded = jwt.verify(token, jwtSecret) as JWTPayload;
-
     c.set("user", decoded);
-
     await next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
