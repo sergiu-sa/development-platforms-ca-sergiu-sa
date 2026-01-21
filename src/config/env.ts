@@ -8,10 +8,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const requiredEnvVars = [
-  "DB_HOST",
-  "DB_USER",
-  "DB_PASSWORD",
-  "DB_NAME",
+  "MYSQLHOST",
+  "MYSQLUSER",
+  "MYSQLPASSWORD",
+  "MYSQLDATABASE",
   "JWT_SECRET",
 ];
 
@@ -46,11 +46,11 @@ export function validateEnv(): void {
 export const config = {
   port: Number(process.env.PORT) || 3000,
   db: {
-    host: process.env.DB_HOST || "localhost",
-    port: Number(process.env.DB_PORT) || 3306,
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD || "",
-    name: process.env.DB_NAME || "news_api",
+    host: process.env.MYSQLHOST || "localhost",
+    port: Number(process.env.MYSQLPORT) || 3306,
+    user: process.env.MYSQLUSER || "root",
+    password: process.env.MYSQLPASSWORD || "",
+    database: process.env.MYSQLDATABASE || "news_api",
   },
   jwtSecret: process.env.JWT_SECRET || "",
   isProduction: process.env.NODE_ENV === "production",
