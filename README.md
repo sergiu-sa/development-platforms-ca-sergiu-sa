@@ -189,6 +189,20 @@ src/
         └── articles.schema.ts
 ```
 
+## Motivation
+
+I chose Option 1 because I wanted to properly understand how a backend works instead of relying on a managed service like Supabase. I already had some experience consuming APIs from the frontend, but the internal flow of authentication, database access, and request handling was still unclear to me. This assignment felt like the right opportunity to close that gap.
+
+I also found working with a relational database valuable. Designing the schema, setting up foreign key relationships, and using SQL JOINs to link articles with their authors gave me a clearer understanding of how backend data is structured and queried in real applications. Using MySQL Workbench made this process more visual and easier to reason about.
+
+The most challenging part of the project was deployment. Deploying only a backend API to Railway was something I had never done before, and it involved a lot of trial and error. Handling environment variables, configuring the database connection, and debugging token-related issues in production took significant time. In the end, this turned out to be one of the most useful parts of the project, because it forced me to understand how an application behaves outside of a local setup.
+
+For testing, I chose Thunder Client instead of Postman. The functionality is similar, but I wanted to try a different tool and keep everything inside VS Code. This did not change the project technically, but it helped me get comfortable using alternative tools for the same workflow.
+
+Although a frontend was not required for this assignment, I later added a simple frontend on a separate branch to visualize the API and prepare the project for my portfolio. I intentionally deployed only the API (main branch) to Railway, since my goal was to learn how to deploy and run a standalone backend service rather than deploying the frontend to Netlify.
+
+Comparing this approach to using Supabase, the main advantage of building a custom API is control and understanding. It took more time, but it gave me a much clearer mental model of how authentication, data access, and deployment actually work. Supabase would have been faster, but for a course focused on development platforms and learning outcomes, building the backend myself was the better choice.
+
 ## License
 
 Course assignment for Development Platforms module.
