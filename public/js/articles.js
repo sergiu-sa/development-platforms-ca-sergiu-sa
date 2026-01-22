@@ -22,6 +22,12 @@ function getCategoryColor(category) {
   return colors[category] || colors.Other;
 }
 
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 async function loadArticles() {
   const container = document.getElementById("articles-container");
   if (!container) return;
@@ -41,16 +47,16 @@ async function loadArticles() {
         (article) => `
         <article class="card">
           <div class="flex justify-between items-start mb-3">
-            <h2 class="text-xl font-semibold text-gray-800">${article.title}</h2>
+            <h2 class="text-xl font-semibold text-gray-800">${escapeHtml(article.title)}</h2>
             <span class="px-2 py-1 rounded text-xs font-medium ${getCategoryColor(article.category)}">
-              ${article.category}
+              ${escapeHtml(article.category)}
             </span>
           </div>
           <p class="text-gray-600 mb-4">
-            ${article.body.length > 200 ? article.body.substring(0, 200) + "..." : article.body}
+            ${escapeHtml(article.body.length > 200 ? article.body.substring(0, 200) + "..." : article.body)}
           </p>
           <div class="flex justify-between items-center text-sm text-gray-500">
-            <span>By ${article.author_email || "Unknown"}</span>
+            <span>By ${escapeHtml(article.author_email || "Unknown")}</span>
             <span>${formatDate(article.created_at)}</span>
           </div>
         </article>
