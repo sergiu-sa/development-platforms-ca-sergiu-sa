@@ -8,8 +8,8 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { pool } from "../db/connection.js";
-import { registerSchema, loginSchema } from "../schemas/auth.schema.js";
+import { pool } from "../../db/connection.js";
+import { registerSchema, loginSchema } from "./auth.schema.js";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 const authRoutes = new Hono();
@@ -35,7 +35,7 @@ authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
       );
     }
 
-    // Hash password with bcrypt (10 salt rounds for security/performance balance)
+    // Hash password with bcrypt
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Insert new user

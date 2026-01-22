@@ -6,9 +6,9 @@
 
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { pool } from "../db/connection.js";
-import { createArticleSchema } from "../schemas/article.schema.js";
-import { authMiddleware } from "../middleware/auth.js";
+import { pool } from "../../db/connection.js";
+import { createArticleSchema } from "./articles.schema.js";
+import { authMiddleware } from "../../middleware/auth.js";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 const articleRoutes = new Hono();

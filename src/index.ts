@@ -7,8 +7,8 @@ import { serve } from "@hono/node-server";
 import { cors } from "hono/cors";
 import { validateEnv, config } from "./config/env.js";
 import { pool, testConnection } from "./db/connection.js";
-import { authRoutes } from "./routes/auth.js";
-import { articleRoutes } from "./routes/articles.js";
+import { authRoutes } from "./modules/auth/auth.route.js";
+import { articleRoutes } from "./modules/articles/articles.route.js";
 
 validateEnv();
 
