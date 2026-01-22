@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>News Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body class="min-h-screen flex flex-col">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md">
+      <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+        <a href="/index.html" class="text-xl font-bold text-blue-600">
+          News Platform
+        </a>
+        <div class="flex items-center gap-4">
+          <a href="/index.html" class="nav-link">Home</a>
+          <a href="/login.html" id="nav-login" class="nav-link">Login</a>
+          <a href="/register.html" id="nav-register" class="nav-link">Register</a>
+          <a href="/create.html" id="nav-create" class="nav-link" style="display: none">
+            Create Article
+          </a>
+          <span id="nav-user-email" class="text-gray-600 text-sm" style="display: none"></span>
+          <button id="nav-logout" class="btn-secondary text-sm" style="display: none">
+            Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-6xl mx-auto px-4 py-8 w-full">
+      <h1 class="text-3xl font-bold text-gray-800 mb-6">Latest Articles</h1>
+      <div id="articles-container" class="grid gap-6">
+        <p class="text-gray-500">Loading articles...</p>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-auto">
+      <div class="max-w-6xl mx-auto px-4 py-4 text-center text-gray-500 text-sm">
+        News Platform &copy; 2026
+      </div>
+    </footer>
+
+    <script type="module" src="/js/auth.js"></script>
+    <script type="module" src="/js/articles.js"></script>
+  </body>
+</html>

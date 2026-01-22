@@ -4,6 +4,7 @@
 
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { cors } from "hono/cors";
 import { validateEnv, config } from "./config/env.js";
 import { pool, testConnection } from "./db/connection.js";
@@ -16,22 +17,6 @@ const app = new Hono();
 
 // CORS - allows frontend apps from different domains to call this API
 app.use("/*", cors());
-
-// Welcome route
-app.get("/", (c) => {
-  return c.json({
-    message: "Welcome to the News API!",
-    status: "Server is running",
-    version: "1.0.0",
-    endpoints: {
-      health: "GET /",
-      register: "POST /auth/register",
-      login: "POST /auth/login",
-      getArticles: "GET /articles (public)",
-      createArticle: "POST /articles (requires auth)",
-    },
-  });
-});
 
 // Health check endpoint for monitoring
 app.get("/health", async (c) => {
@@ -55,9 +40,12 @@ app.get("/health", async (c) => {
   }
 });
 
-// Mount route modules
+// Mount API routes
 app.route("/auth", authRoutes);
 app.route("/articles", articleRoutes);
+app.use("/*", serveStatic({ root: "./public" }));
+
+app.get("/", serveStatic({ path: "./public/index.html" }));
 
 // Start server
 const PORT = config.port;
@@ -79,7 +67,7 @@ serve({
 
 console.log(`✅ Server is running on http://localhost:${PORT}`);
 console.log("\n📝 Available endpoints:");
-console.log(`   GET  http://localhost:${PORT}/              - Welcome message`);
+console.log(`   GET  http://localhost:${PORT}/              - Static files / API info`);
 console.log(
   `   GET  http://localhost:${PORT}/health        - Database health check`
 );
