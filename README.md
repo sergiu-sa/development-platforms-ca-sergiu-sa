@@ -171,16 +171,22 @@ Use Thunder Client (VS Code extension) or Postman:
 
 ## Project Structure
 
-```md
+```txt
 src/
-├── index.ts # Main server file
-├── config/env.ts # Environment validation
-├── db/connection.ts # Database connection
-├── routes/
-│ ├── auth.ts # Register & login
-│ └── articles.ts # Get & create articles
-├── middleware/auth.ts # Checks if user is logged in
-└── schemas/ # Validates incoming data
+├── index.ts
+├── config/
+│   └── env.ts
+├── db/
+│   └── connection.ts
+├── middleware/
+│   └── auth.ts
+└── modules/
+    ├── auth/
+    │   ├── auth.route.ts
+    │   └── auth.schema.ts
+    └── articles/
+        ├── articles.route.ts
+        └── articles.schema.ts
 ```
 
 ## License
