@@ -47,7 +47,7 @@ export function updateNavigation() {
   if (createLink) createLink.style.display = loggedIn ? "block" : "none";
   if (logoutBtn) {
     logoutBtn.style.display = loggedIn ? "block" : "none";
-    logoutBtn.addEventListener("click", logout);
+    logoutBtn.onclick = logout;
   }
 
   if (userEmail) {

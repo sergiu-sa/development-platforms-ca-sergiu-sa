@@ -67,7 +67,7 @@ serve({
 
 console.log(`✅ Server is running on http://localhost:${PORT}`);
 console.log("\n📝 Available endpoints:");
-console.log(`   GET  http://localhost:${PORT}/              - Static files / API info`);
+console.log(`   GET  http://localhost:${PORT}/              - Home page (frontend)`);
 console.log(
   `   GET  http://localhost:${PORT}/health        - Database health check`
 );

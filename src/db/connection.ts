@@ -38,7 +38,7 @@ export async function testConnection(): Promise<boolean> {
     console.error("   3. Are your database credentials correct in .env?");
     console.error('   4. Did you create the "news_api" database?');
     console.error(
-      "   5. Did you run the database.sql file in MySQL Workbench?"
+      "   5. Did you run the database-schema.sql file in MySQL Workbench?"
     );
     return false;
   }

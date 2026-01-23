@@ -11,12 +11,16 @@ async function apiRequest(endpoint, options = {}) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  return response.json();
+    return response.json();
+  } catch (error) {
+    return { success: false, message: "Network error. Please try again." };
+  }
 }
 
 export async function getArticles() {

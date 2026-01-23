@@ -23,7 +23,7 @@ This project is a backend API that allows users to register, login, and manage n
 
 - **Health Check:** [GET /health](https://development-platforms-ca-sergiu-sa-production.up.railway.app/health)
 - **View Articles:** [GET /articles](https://development-platforms-ca-sergiu-sa-production.up.railway.app/articles)
-- **API Info:** [GET /](https://development-platforms-ca-sergiu-sa-production.up.railway.app/)
+- **Home Page:** [GET /](https://development-platforms-ca-sergiu-sa-production.up.railway.app/)
 
 ### Test the Full API
 
@@ -71,7 +71,7 @@ curl -X POST https://development-platforms-ca-sergiu-sa-production.up.railway.ap
 1. **Clone and install**
 
    ```bash
-   git clone <your-repo-url>
+   git clone <https://github.com/sergiu-sa/development-platforms-ca-sergiu-sa.git>
    cd development-platforms-ca-sergiu-sa
    npm install
    ```
@@ -96,7 +96,7 @@ curl -X POST https://development-platforms-ca-sergiu-sa-production.up.railway.ap
 
 3. **Create the database**
    - Open MySQL Workbench
-   - Run the `database.sql` file (it creates everything for you)
+   - Run the `database-schema.sql` file (it creates everything for you)
 
 4. **Start the server**
 
@@ -106,13 +106,13 @@ curl -X POST https://development-platforms-ca-sergiu-sa-production.up.railway.ap
 
 5. **Check it works**
 
-   Go to `http://localhost:3000/` - you should see a welcome message!
+   Go to `http://localhost:3000/` - you should see the home page with articles!
 
 ## API Endpoints
 
 ### Anyone Can Use These
 
-**GET /** - Welcome message
+**GET /** - Home page (frontend)
 
 **GET /health** - Check if database is connected
 
@@ -172,36 +172,54 @@ Use Thunder Client (VS Code extension) or Postman:
 ## Project Structure
 
 ```txt
-src/
-├── index.ts
-├── config/
-│   └── env.ts
-├── db/
-│   └── connection.ts
-├── middleware/
-│   └── auth.ts
-└── modules/
-    ├── auth/
-    │   ├── auth.route.ts
-    │   └── auth.schema.ts
-    └── articles/
-        ├── articles.route.ts
-        └── articles.schema.ts
+├── database-schema.sql          # Database setup script (run this first)
+├── database-export.sql          # Full database export for grading
+├── package.json
+├── tsconfig.json
+│
+├── src/                         # Backend (TypeScript)
+│   ├── index.ts                 # Server entry point
+│   ├── config/
+│   │   └── env.ts               # Environment validation
+│   ├── db/
+│   │   └── connection.ts        # MySQL connection pool
+│   ├── middleware/
+│   │   └── auth.ts              # JWT authentication
+│   └── modules/
+│       ├── auth/
+│       │   ├── auth.route.ts    # Login & register endpoints
+│       │   └── auth.schema.ts   # Validation schemas
+│       └── articles/
+│           ├── articles.route.ts
+│           └── articles.schema.ts
+│
+└── public/                      # Frontend (served as static files)
+    ├── index.html               # Home page - article list
+    ├── login.html               # Login form
+    ├── register.html            # Registration form
+    ├── create.html              # Create article (auth required)
+    ├── css/
+    │   └── styles.css
+    └── js/
+        ├── api.js               # API request helper
+        ├── auth.js              # Token management
+        ├── articles.js          # Article display
+        ├── login.js             # Login form handler
+        ├── register.js          # Register form handler
+        └── create.js            # Create article handler
 ```
 
 ## Motivation
 
-I chose Option 1 because I wanted to properly understand how a backend works instead of relying on a managed service like Supabase. I already had some experience consuming APIs from the frontend, but the internal flow of authentication, database access, and request handling was still unclear to me. This assignment felt like the right opportunity to close that gap.
+I chose Option 1 because I wanted to properly understand how a backend works instead of using a service like Supabase. I already had some experience working with APIs from the frontend, but the internal flow of authentication, database access, and request handling was still unclear to me. This assignment felt like a good opportunity for me to get a better grasp of what actually happens on the server side.
 
-I also found working with a relational database valuable. Designing the schema, setting up foreign key relationships, and using SQL JOINs to link articles with their authors gave me a clearer understanding of how backend data is structured and queried in real applications. Using MySQL Workbench made this process more visual and easier to reason about.
+Working with a relational database was also valuable. Designing the schema, setting up foreign key relationships, and using SQL JOINs to link articles with their authors helped me better understand how backend data is structured and queried in real applications. Using MySQL Workbench made this easier to reason about and gave me a clearer overview of how everything fits together.
 
-The most challenging part of the project was deployment. Deploying only a backend API to Railway was something I had never done before, and it involved a lot of trial and error. Handling environment variables, configuring the database connection, and debugging token-related issues in production took significant time. In the end, this turned out to be one of the most useful parts of the project, because it forced me to understand how an application behaves outside of a local setup.
+The most challenging part of the project was deployment. Deploying a backend-only API to Railway was something I had never done before and involved a lot of trial and error. Handling environment variables, configuring the database connection, and debugging token-related issues in production took significant time. After successfully deploying the backend API, I later added a frontend as an extra step.
 
-For testing, I chose Thunder Client instead of Postman. The functionality is similar, but I wanted to try a different tool and keep everything inside VS Code. This did not change the project technically, but it helped me get comfortable using alternative tools for the same workflow.
+For testing, I chose Thunder Client instead of Postman. The tools are very similar, but I wanted to try something different and keep everything inside VS Code. This did not affect the project technically, but it helped me get comfortable using alternative tools for the same tasks.
 
-Although a frontend was not required for this assignment, I later added a simple frontend on a separate branch to visualize the API and prepare the project for my portfolio. I intentionally deployed only the API (main branch) to Railway, since my goal was to learn how to deploy and run a standalone backend service rather than deploying the frontend to Netlify.
-
-Comparing this approach to using Supabase, the main advantage of building a custom API is control and understanding. It took more time, but it gave me a much clearer mental model of how authentication, data access, and deployment actually work. Supabase would have been faster, but for a course focused on development platforms and learning outcomes, building the backend myself was the better choice.
+Although a frontend was not required, I added a simple one to visualise the API and prepare the project for my portfolio. Comparing this approach to using Supabase, building a custom API gave me more control and a clearer understanding of how authentication, data access, and deployment work.
 
 ## License
 

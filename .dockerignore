@@ -5,7 +5,6 @@ node_modules/
 .env.local
 .env.*.local
 dist/
-NOTES.md
 *.log
 npm-debug.log*
 .git/
@@ -18,4 +17,4 @@ npm-debug.log*
 coverage/
 *.test.ts
 *.spec.ts
-database.sql
+database-schema.sql
