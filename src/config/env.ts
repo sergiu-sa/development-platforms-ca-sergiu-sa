@@ -5,7 +5,11 @@
 
 import dotenv from "dotenv";
 
-dotenv.config();
+// Vitest sets NODE_ENV=test, which routes us at a throwaway database instead of
+// the development one. See tests/helpers/db.ts for the guard that enforces this.
+dotenv.config({
+  path: process.env.NODE_ENV === "test" ? ".env.test" : ".env",
+});
 
 const requiredEnvVars = [
   "MYSQLHOST",

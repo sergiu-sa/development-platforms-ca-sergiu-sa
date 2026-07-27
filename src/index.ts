@@ -1,64 +1,17 @@
 /**
  * News API - Main Server Entry Point
+ *
+ * Validates the environment, then starts the HTTP server. The app itself is
+ * assembled in src/app.ts.
  */
 
-import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import { serveStatic } from "@hono/node-server/serve-static";
-import { cors } from "hono/cors";
 import { validateEnv, config } from "./config/env.js";
-import { pool, testConnection } from "./db/connection.js";
-import { authRoutes } from "./modules/auth/auth.route.js";
-import { articleRoutes } from "./modules/articles/articles.route.js";
+import { testConnection } from "./db/connection.js";
+import { app } from "./app.js";
 
 validateEnv();
 
-const app = new Hono();
-
-// CORS - only for the API routes, and only for origins we explicitly name.
-// The bundled frontend is same-origin, so it needs no CORS headers; this exists
-// purely for a separately hosted frontend. No ALLOWED_ORIGINS means no CORS.
-// Bare paths are listed alongside the wildcards because "/articles/*" does not
-// match "/articles" itself.
-if (config.allowedOrigins.length > 0) {
-  const corsMiddleware = cors({ origin: config.allowedOrigins });
-  const apiPaths = ["/auth", "/auth/*", "/articles", "/articles/*"];
-
-  for (const path of apiPaths) {
-    app.use(path, corsMiddleware);
-  }
-}
-
-// Health check endpoint for monitoring
-app.get("/health", async (c) => {
-  try {
-    await pool.query("SELECT 1");
-    return c.json({
-      status: "healthy",
-      database: "connected",
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("Health check failed:", error);
-    return c.json(
-      {
-        status: "unhealthy",
-        database: "disconnected",
-        timestamp: new Date().toISOString(),
-      },
-      503
-    );
-  }
-});
-
-// Mount API routes
-app.route("/auth", authRoutes);
-app.route("/articles", articleRoutes);
-app.use("/*", serveStatic({ root: "./public" }));
-
-app.get("/", serveStatic({ path: "./public/index.html" }));
-
-// Start server
 const PORT = config.port;
 
 console.log("🚀 Starting News API server...");

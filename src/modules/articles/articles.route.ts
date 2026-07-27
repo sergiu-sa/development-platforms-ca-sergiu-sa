@@ -27,7 +27,7 @@ articleRoutes.get("/", async (c) => {
         users.email as author_email
       FROM articles
       LEFT JOIN users ON articles.submitted_by = users.id
-      ORDER BY articles.created_at DESC
+      ORDER BY articles.created_at DESC, articles.id DESC
     `);
 
     return c.json({
