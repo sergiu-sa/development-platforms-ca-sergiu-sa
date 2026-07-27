@@ -64,8 +64,13 @@ async function loadArticles() {
       )
       .join("");
   } else {
+    // Interim state: the articles endpoint was removed with the articles table.
+    // This whole frontend is replaced in the briefings rebuild - see
+    // docs/superpowers/specs/2026-07-27-briefings-concept-design.md
     container.innerHTML = `
-      <p class="error-message text-center py-8">Failed to load articles. Please try again later.</p>
+      <p class="text-gray-500 text-center py-8">
+        The feed is being rebuilt. Sign in and registration still work.
+      </p>
     `;
   }
 }

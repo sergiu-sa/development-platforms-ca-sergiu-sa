@@ -17,7 +17,10 @@ async function apiRequest(endpoint, options = {}) {
       headers,
     });
 
-    return response.json();
+    // Must be awaited here, not returned as a pending promise. Without the
+    // await, a non-JSON body (a 404 page, a proxy error, a gateway timeout)
+    // rejects outside this try/catch and the caller never sees a result.
+    return await response.json();
   } catch (error) {
     return { success: false, message: "Network error. Please try again." };
   }
