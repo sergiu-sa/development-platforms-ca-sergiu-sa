@@ -4,16 +4,14 @@
  */
 
 import mysql from "mysql2/promise";
-import dotenv from "dotenv";
-
-dotenv.config();
+import { config } from "../config/env.js";
 
 const pool = mysql.createPool({
-  host: process.env.MYSQLHOST || "localhost",
-  port: Number(process.env.MYSQLPORT) || 3306,
-  user: process.env.MYSQLUSER || "root",
-  password: process.env.MYSQLPASSWORD || "",
-  database: process.env.MYSQLDATABASE || "news_api",
+  host: config.db.host,
+  port: config.db.port,
+  user: config.db.user,
+  password: config.db.password,
+  database: config.db.database,
   connectionLimit: 10,
   waitForConnections: true,
   queueLimit: 0,

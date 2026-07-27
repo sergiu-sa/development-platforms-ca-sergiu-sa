@@ -20,8 +20,11 @@ CREATE TABLE IF NOT EXISTS articles (
     FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Local development seed account. The password is "password123" and is public
+-- by design so anyone cloning the repo can log in immediately. Never load this
+-- seed into a deployed environment.
 INSERT INTO users (email, password_hash) VALUES
-('test@test.com', '$2b$10$rQZ5hGz5Z5Z5Z5Z5Z5Z5ZOxK5K5K5K5K5K5K5K5K5K5K5K5K5K5K5');
+('test@test.com', '$2a$10$TiBHWRHw0He8uaM.oOynsupsCmTu1ZINO9395DCwRVku7JXnewx5i');
 
 INSERT INTO articles (title, body, category, submitted_by) VALUES
 (

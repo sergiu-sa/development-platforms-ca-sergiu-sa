@@ -15,8 +15,19 @@ validateEnv();
 
 const app = new Hono();
 
-// CORS - allows frontend apps from different domains to call this API
-app.use("/*", cors());
+// CORS - only for the API routes, and only for origins we explicitly name.
+// The bundled frontend is same-origin, so it needs no CORS headers; this exists
+// purely for a separately hosted frontend. No ALLOWED_ORIGINS means no CORS.
+// Bare paths are listed alongside the wildcards because "/articles/*" does not
+// match "/articles" itself.
+if (config.allowedOrigins.length > 0) {
+  const corsMiddleware = cors({ origin: config.allowedOrigins });
+  const apiPaths = ["/auth", "/auth/*", "/articles", "/articles/*"];
+
+  for (const path of apiPaths) {
+    app.use(path, corsMiddleware);
+  }
+}
 
 // Health check endpoint for monitoring
 app.get("/health", async (c) => {
@@ -67,7 +78,9 @@ serve({
 
 console.log(`✅ Server is running on http://localhost:${PORT}`);
 console.log("\n📝 Available endpoints:");
-console.log(`   GET  http://localhost:${PORT}/              - Home page (frontend)`);
+console.log(
+  `   GET  http://localhost:${PORT}/              - Home page (frontend)`
+);
 console.log(
   `   GET  http://localhost:${PORT}/health        - Database health check`
 );

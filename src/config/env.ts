@@ -43,6 +43,17 @@ export function validateEnv(): void {
   console.log("✅ Environment variables validated");
 }
 
+// Comma-separated list of extra origins allowed to call the API from a browser.
+// Left empty by default: the frontend is served from this same origin, which
+// needs no CORS headers at all. Only set this if a separately hosted frontend
+// needs access.
+function parseAllowedOrigins(): string[] {
+  return (process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
+}
+
 export const config = {
   port: Number(process.env.PORT) || 3000,
   db: {
@@ -53,5 +64,6 @@ export const config = {
     database: process.env.MYSQLDATABASE || "news_api",
   },
   jwtSecret: process.env.JWT_SECRET || "",
+  allowedOrigins: parseAllowedOrigins(),
   isProduction: process.env.NODE_ENV === "production",
 };

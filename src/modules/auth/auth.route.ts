@@ -9,6 +9,7 @@ import { zValidator } from "@hono/zod-validator";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { pool } from "../../db/connection.js";
+import { config } from "../../config/env.js";
 import { registerSchema, loginSchema } from "./auth.schema.js";
 import { RowDataPacket, ResultSetHeader } from "mysql2";
 
@@ -104,7 +105,7 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
       );
     }
 
-    const jwtSecret = process.env.JWT_SECRET;
+    const jwtSecret = config.jwtSecret;
 
     if (!jwtSecret) {
       console.error("JWT_SECRET is not defined!");
