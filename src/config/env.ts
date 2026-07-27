@@ -11,13 +11,7 @@ dotenv.config({
   path: process.env.NODE_ENV === "test" ? ".env.test" : ".env",
 });
 
-const requiredEnvVars = [
-  "MYSQLHOST",
-  "MYSQLUSER",
-  "MYSQLPASSWORD",
-  "MYSQLDATABASE",
-  "JWT_SECRET",
-];
+const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET"];
 
 // Validates all required environment variables are set
 export function validateEnv(): void {
@@ -60,14 +54,22 @@ function parseAllowedOrigins(): string[] {
 
 export const config = {
   port: Number(process.env.PORT) || 3000,
-  db: {
-    host: process.env.MYSQLHOST || "localhost",
-    port: Number(process.env.MYSQLPORT) || 3306,
-    user: process.env.MYSQLUSER || "root",
-    password: process.env.MYSQLPASSWORD || "",
-    database: process.env.MYSQLDATABASE || "news_api",
-  },
+  databaseUrl: process.env.DATABASE_URL || "",
   jwtSecret: process.env.JWT_SECRET || "",
   allowedOrigins: parseAllowedOrigins(),
   isProduction: process.env.NODE_ENV === "production",
 };
+
+/**
+ * Database name from a Postgres connection URL. Backs the test-database safety
+ * rail in tests/helpers/db.ts, which refuses to run against anything not ending
+ * in "_test". Returns "" for an unparseable or missing URL so the guard fails
+ * closed rather than open.
+ */
+export function databaseNameFromUrl(url: string): string {
+  try {
+    return new URL(url).pathname.replace(/^\//, "");
+  } catch {
+    return "";
+  }
+}

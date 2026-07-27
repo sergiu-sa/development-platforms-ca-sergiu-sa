@@ -1,43 +1,46 @@
 /**
  * Database Connection Module
- * MySQL connection pool with production-ready settings.
+ * Postgres connection pool. Reads its configuration from config/env.ts.
  */
 
-import mysql from "mysql2/promise";
+import pg from "pg";
 import { config } from "../config/env.js";
 
-const pool = mysql.createPool({
-  host: config.db.host,
-  port: config.db.port,
-  user: config.db.user,
-  password: config.db.password,
-  database: config.db.database,
-  connectionLimit: 10,
-  waitForConnections: true,
-  queueLimit: 0,
-  connectTimeout: 10000,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 10000,
+const { Pool } = pg;
+
+/**
+ * Local Postgres runs without TLS; hosted Postgres (Neon) requires it.
+ * Deciding from the URL keeps one code path working in both places.
+ */
+function sslSetting(): pg.PoolConfig["ssl"] {
+  const isLocal = /@(localhost|127\.0\.0\.1)[:/]/.test(config.databaseUrl);
+  return isLocal ? false : { rejectUnauthorized: true };
+}
+
+const pool = new Pool({
+  connectionString: config.databaseUrl,
+  ssl: sslSetting(),
+  max: 10,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
 });
 
 // Test connection on startup
 export async function testConnection(): Promise<boolean> {
   try {
-    const connection = await pool.getConnection();
+    const client = await pool.connect();
     console.log("✅ Database connection successful!");
-    connection.release();
+    client.release();
     return true;
   } catch (error) {
     console.error("❌ Database connection failed!");
     console.error("Error details:", error);
     console.error("\n📋 Troubleshooting checklist:");
-    console.error("   1. Is MySQL running on your computer?");
+    console.error("   1. Is Postgres running? (brew services list)");
     console.error("   2. Did you create a .env file from .env.example?");
-    console.error("   3. Are your database credentials correct in .env?");
-    console.error('   4. Did you create the "news_api" database?');
-    console.error(
-      "   5. Did you run the database-schema.sql file in MySQL Workbench?"
-    );
+    console.error("   3. Is DATABASE_URL correct?");
+    console.error('   4. Did you create the "news_api" database? (createdb)');
+    console.error("   5. Did you run db/schema.sql against it?");
     return false;
   }
 }

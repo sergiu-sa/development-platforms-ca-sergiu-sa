@@ -71,6 +71,20 @@ describe("POST /auth/register", () => {
     expect(response.status).toBe(409);
   });
 
+  // MySQL's collation gave this for free. Postgres needs the LOWER() index,
+  // and without it the same person could register twice.
+  it("rejects an email differing only by case", async () => {
+    await post("/auth/register", validRegistration);
+
+    const response = await post("/auth/register", {
+      ...validRegistration,
+      email: "NEW@example.com",
+      username: "someoneelse",
+    });
+
+    expect(response.status).toBe(409);
+  });
+
   it("rejects a malformed email", async () => {
     const response = await post("/auth/register", {
       ...validRegistration,
@@ -138,6 +152,16 @@ describe("POST /auth/login", () => {
     expect(payload.email).toBe("user@example.com");
     expect(payload.username).toBe("regular");
     expect(typeof payload.userId).toBe("number");
+  });
+
+  it("logs in regardless of email casing", async () => {
+    const response = await post("/auth/login", {
+      email: "USER@example.com",
+      password: "password123",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.token).toBeDefined();
   });
 
   it("rejects a wrong password with 401", async () => {

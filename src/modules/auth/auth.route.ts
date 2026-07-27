@@ -11,7 +11,6 @@ import jwt from "jsonwebtoken";
 import { pool } from "../../db/connection.js";
 import { config } from "../../config/env.js";
 import { registerSchema, loginSchema } from "./auth.schema.js";
-import { RowDataPacket, ResultSetHeader } from "mysql2";
 
 const authRoutes = new Hono();
 
@@ -22,13 +21,19 @@ authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
 
     // Check whether either identifier is taken. Usernames are compared
     // case-insensitively so "Alice" cannot shadow "alice" on article bylines.
-    const [existingUsers] = await pool.query<RowDataPacket[]>(
-      "SELECT email, username FROM users WHERE email = ? OR LOWER(username) = LOWER(?)",
+    const { rows: existingUsers } = await pool.query<{
+      email: string;
+      username: string;
+    }>(
+      `SELECT email, username FROM users
+       WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($2)`,
       [email, username]
     );
 
     if (existingUsers.length > 0) {
-      const emailTaken = existingUsers.some((user) => user.email === email);
+      const emailTaken = existingUsers.some(
+        (user) => user.email.toLowerCase() === email.toLowerCase()
+      );
 
       return c.json(
         {
@@ -45,8 +50,10 @@ authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Insert new user
-    const [result] = await pool.query<ResultSetHeader>(
-      "INSERT INTO users (email, username, password_hash) VALUES (?, ?, ?)",
+    const { rows } = await pool.query<{ id: number }>(
+      `INSERT INTO users (email, username, password_hash)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
       [email, username, passwordHash]
     );
 
@@ -55,7 +62,7 @@ authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
         success: true,
         message: "User registered successfully",
         user: {
-          id: result.insertId,
+          id: rows[0].id,
           email: email,
           username: username,
         },
@@ -79,9 +86,16 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
   try {
     const { email, password } = c.req.valid("json");
 
-    // Find user by email
-    const [users] = await pool.query<RowDataPacket[]>(
-      "SELECT id, email, username, password_hash FROM users WHERE email = ?",
+    // Find user by email. LOWER() matches the unique index, so casing in the
+    // submitted address never prevents a legitimate login.
+    const { rows: users } = await pool.query<{
+      id: number;
+      email: string;
+      username: string;
+      password_hash: string;
+    }>(
+      `SELECT id, email, username, password_hash FROM users
+       WHERE LOWER(email) = LOWER($1)`,
       [email]
     );
 
