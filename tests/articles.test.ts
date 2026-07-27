@@ -24,15 +24,29 @@ describe("GET /articles", () => {
     expect(response.body.count).toBe(0);
   });
 
-  it("returns created articles with their author", async () => {
-    const { token } = await registerAndLogin("author@example.com");
+  it("returns created articles with their author's display name", async () => {
+    const { token } = await registerAndLogin("author@example.com", "reporter");
     await post("/articles", validArticle, token);
 
     const response = await get("/articles");
 
     expect(response.body.count).toBe(1);
     expect(response.body.articles[0].title).toBe(validArticle.title);
-    expect(response.body.articles[0].author_email).toBe("author@example.com");
+    expect(response.body.articles[0].author).toBe("reporter");
+  });
+
+  // The public feed is readable by anyone, so an email address reaching it
+  // would expose the whole userbase to scraping.
+  it("never exposes author email addresses", async () => {
+    const { token } = await registerAndLogin("private@example.com", "reporter");
+    await post("/articles", validArticle, token);
+
+    const response = await get("/articles");
+    const serialised = JSON.stringify(response.body);
+
+    expect(serialised).not.toContain("private@example.com");
+    expect(serialised).not.toContain("@example.com");
+    expect(response.body.articles[0].author_email).toBeUndefined();
   });
 
   it("orders newest first", async () => {
@@ -63,7 +77,7 @@ describe("POST /articles", () => {
 
   it("rejects a token signed with the wrong secret", async () => {
     const forged = jwt.sign(
-      { userId: 1, email: "attacker@example.com" },
+      { userId: 1, email: "attacker@example.com", username: "attacker" },
       "the-wrong-secret"
     );
 
@@ -74,7 +88,7 @@ describe("POST /articles", () => {
 
   it("rejects an expired token", async () => {
     const expired = jwt.sign(
-      { userId: 1, email: "user@example.com" },
+      { userId: 1, email: "user@example.com", username: "user" },
       config.jwtSecret,
       { expiresIn: "-1s" }
     );
@@ -97,8 +111,8 @@ describe("POST /articles", () => {
   // The whole anti-impersonation guarantee: authorship comes from the verified
   // token, never from client-supplied input.
   it("takes submitted_by from the token and ignores the request body", async () => {
-    const victim = await registerAndLogin("victim@example.com");
-    const attacker = await registerAndLogin("attacker@example.com");
+    const victim = await registerAndLogin("victim@example.com", "victim");
+    const attacker = await registerAndLogin("attacker@example.com", "attacker");
 
     const response = await post(
       "/articles",

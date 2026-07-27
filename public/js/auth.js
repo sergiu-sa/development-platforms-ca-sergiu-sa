@@ -40,7 +40,7 @@ export function updateNavigation() {
   const registerLink = document.getElementById("nav-register");
   const createLink = document.getElementById("nav-create");
   const logoutBtn = document.getElementById("nav-logout");
-  const userEmail = document.getElementById("nav-user-email");
+  const userLabel = document.getElementById("nav-user-email");
 
   if (loginLink) loginLink.style.display = loggedIn ? "none" : "block";
   if (registerLink) registerLink.style.display = loggedIn ? "none" : "block";
@@ -50,10 +50,11 @@ export function updateNavigation() {
     logoutBtn.onclick = logout;
   }
 
-  if (userEmail) {
-    userEmail.style.display = loggedIn ? "block" : "none";
+  if (userLabel) {
+    userLabel.style.display = loggedIn ? "block" : "none";
+    // Fall back to the email for tokens issued before usernames existed.
     if (loggedIn && user) {
-      userEmail.textContent = user.email;
+      userLabel.textContent = user.username || user.email;
     }
   }
 }

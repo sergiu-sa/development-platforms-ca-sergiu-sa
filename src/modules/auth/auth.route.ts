@@ -18,19 +18,24 @@ const authRoutes = new Hono();
 // POST /auth/register - Create new user account
 authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
   try {
-    const { email, password } = c.req.valid("json");
+    const { email, username, password } = c.req.valid("json");
 
-    // Check if email already exists
+    // Check whether either identifier is taken. Usernames are compared
+    // case-insensitively so "Alice" cannot shadow "alice" on article bylines.
     const [existingUsers] = await pool.query<RowDataPacket[]>(
-      "SELECT id FROM users WHERE email = ?",
-      [email]
+      "SELECT email, username FROM users WHERE email = ? OR LOWER(username) = LOWER(?)",
+      [email, username]
     );
 
     if (existingUsers.length > 0) {
+      const emailTaken = existingUsers.some((user) => user.email === email);
+
       return c.json(
         {
           success: false,
-          message: "A user with this email already exists",
+          message: emailTaken
+            ? "A user with this email already exists"
+            : "That username is already taken",
         },
         409
       );
@@ -41,8 +46,8 @@ authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
 
     // Insert new user
     const [result] = await pool.query<ResultSetHeader>(
-      "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-      [email, passwordHash]
+      "INSERT INTO users (email, username, password_hash) VALUES (?, ?, ?)",
+      [email, username, passwordHash]
     );
 
     return c.json(
@@ -52,6 +57,7 @@ authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
         user: {
           id: result.insertId,
           email: email,
+          username: username,
         },
       },
       201
@@ -75,7 +81,7 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
 
     // Find user by email
     const [users] = await pool.query<RowDataPacket[]>(
-      "SELECT id, email, password_hash FROM users WHERE email = ?",
+      "SELECT id, email, username, password_hash FROM users WHERE email = ?",
       [email]
     );
 
@@ -123,6 +129,7 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
       {
         userId: user.id,
         email: user.email,
+        username: user.username,
       },
       jwtSecret,
       {
@@ -137,6 +144,7 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
       user: {
         id: user.id,
         email: user.email,
+        username: user.username,
       },
     });
   } catch (error) {

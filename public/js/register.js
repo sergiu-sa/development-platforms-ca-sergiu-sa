@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
 
     const email = document.getElementById("email").value;
+    const username = document.getElementById("username").value;
     const password = document.getElementById("password").value;
     const confirmPassword = document.getElementById("confirm-password").value;
     const submitBtn = form.querySelector('button[type="submit"]');
@@ -38,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn.disabled = true;
     submitBtn.textContent = "Creating account...";
 
-    const response = await register(email, password);
+    const response = await register(email, username, password);
 
     if (response.success) {
       successMessage.textContent = "Account created! Redirecting to login...";

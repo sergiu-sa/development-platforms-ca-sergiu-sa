@@ -11,6 +11,7 @@ import { config } from "../config/env.js";
 export interface JWTPayload {
   userId: number;
   email: string;
+  username: string;
   iat?: number;
   exp?: number;
 }

@@ -46,5 +46,6 @@ export interface Article {
 }
 
 export interface ArticleWithAuthor extends Article {
-  author_email: string;
+  /** Public display name. Never the author's email address. */
+  author: string;
 }

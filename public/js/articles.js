@@ -56,7 +56,7 @@ async function loadArticles() {
             ${escapeHtml(article.body.length > 200 ? article.body.substring(0, 200) + "..." : article.body)}
           </p>
           <div class="flex justify-between items-center text-sm text-gray-500">
-            <span>By ${escapeHtml(article.author_email || "Unknown")}</span>
+            <span>By ${escapeHtml(article.author || "Unknown")}</span>
             <span>${formatDate(article.created_at)}</span>
           </div>
         </article>

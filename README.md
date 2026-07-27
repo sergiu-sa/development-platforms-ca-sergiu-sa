@@ -33,7 +33,7 @@ Use Thunder Client, Postman, or curl to test all endpoints:
 # Register a new user
 curl -X POST https://development-platforms-ca-sergiu-sa-production.up.railway.app/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123"}'
+  -d '{"email":"test@example.com","username":"tester","password":"password123"}'
 
 # Login and get token
 curl -X POST https://development-platforms-ca-sergiu-sa-production.up.railway.app/auth/login \
@@ -119,8 +119,16 @@ curl -X POST https://development-platforms-ca-sergiu-sa-production.up.railway.ap
 **POST /auth/register** - Create a new account
 
 ```json
-{ "email": "you@example.com", "password": "password123" }
+{
+  "email": "you@example.com",
+  "username": "your_name",
+  "password": "password123"
+}
 ```
+
+`username` is your public display name — 3-30 characters, letters, numbers,
+hyphens and underscores. Articles are bylined with it so email addresses are
+never exposed publicly.
 
 **POST /auth/login** - Login and get a token
 
@@ -154,11 +162,15 @@ Authorization: Bearer your_token_here
 
 Two tables:
 
-**users** - id, email, password_hash, created_at
+**users** - id, email, username, password_hash, created_at
 
 **articles** - id, title, body, category, submitted_by, created_at
 
-Articles link to users through `submitted_by` (which user wrote it).
+Articles link to users through `submitted_by` (which user wrote it). `GET
+/articles` joins on it to return the author's `username`, never their email.
+
+Run `database-schema.sql` for a fresh database. To upgrade an existing one,
+apply the scripts in `db/migrations/` in order.
 
 ## Testing
 

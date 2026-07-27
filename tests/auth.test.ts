@@ -8,24 +8,25 @@ beforeAll(createSchema);
 beforeEach(resetDatabase);
 afterAll(closeDatabase);
 
+const validRegistration = {
+  email: "new@example.com",
+  username: "newcomer",
+  password: "password123",
+};
+
 describe("POST /auth/register", () => {
   it("creates a user and returns its id", async () => {
-    const response = await post("/auth/register", {
-      email: "new@example.com",
-      password: "password123",
-    });
+    const response = await post("/auth/register", validRegistration);
 
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
     expect(response.body.user.email).toBe("new@example.com");
+    expect(response.body.user.username).toBe("newcomer");
     expect(typeof response.body.user.id).toBe("number");
   });
 
   it("never returns the password or its hash", async () => {
-    const response = await post("/auth/register", {
-      email: "new@example.com",
-      password: "password123",
-    });
+    const response = await post("/auth/register", validRegistration);
 
     const serialised = JSON.stringify(response.body);
     expect(serialised).not.toContain("password123");
@@ -33,13 +34,11 @@ describe("POST /auth/register", () => {
   });
 
   it("rejects a duplicate email with 409", async () => {
-    await post("/auth/register", {
-      email: "taken@example.com",
-      password: "password123",
-    });
+    await post("/auth/register", validRegistration);
 
     const response = await post("/auth/register", {
-      email: "taken@example.com",
+      ...validRegistration,
+      username: "someoneelse",
       password: "differentpassword",
     });
 
@@ -47,10 +46,35 @@ describe("POST /auth/register", () => {
     expect(response.body.success).toBe(false);
   });
 
+  it("rejects a duplicate username with 409", async () => {
+    await post("/auth/register", validRegistration);
+
+    const response = await post("/auth/register", {
+      ...validRegistration,
+      email: "different@example.com",
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body.message).toMatch(/username/i);
+  });
+
+  // Usernames are bylines, so "Alice" must not be able to shadow "alice".
+  it("rejects a username differing only by case", async () => {
+    await post("/auth/register", validRegistration);
+
+    const response = await post("/auth/register", {
+      ...validRegistration,
+      email: "different@example.com",
+      username: "NewComer",
+    });
+
+    expect(response.status).toBe(409);
+  });
+
   it("rejects a malformed email", async () => {
     const response = await post("/auth/register", {
+      ...validRegistration,
       email: "not-an-email",
-      password: "password123",
     });
 
     expect(response.status).toBe(400);
@@ -58,8 +82,23 @@ describe("POST /auth/register", () => {
 
   it("rejects a password shorter than 6 characters", async () => {
     const response = await post("/auth/register", {
-      email: "short@example.com",
+      ...validRegistration,
       password: "12345",
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it.each([
+    ["too short", "ab"],
+    ["too long", "a".repeat(31)],
+    ["containing spaces", "two words"],
+    ["containing markup", "<script>"],
+    ["containing an at sign", "looks@email.com"],
+  ])("rejects a username %s", async (_label, username) => {
+    const response = await post("/auth/register", {
+      ...validRegistration,
+      username,
     });
 
     expect(response.status).toBe(400);
@@ -76,6 +115,7 @@ describe("POST /auth/login", () => {
   beforeEach(async () => {
     await post("/auth/register", {
       email: "user@example.com",
+      username: "regular",
       password: "password123",
     });
   });
@@ -92,9 +132,11 @@ describe("POST /auth/login", () => {
     const payload = jwt.verify(response.body.token, config.jwtSecret) as {
       userId: number;
       email: string;
+      username: string;
     };
 
     expect(payload.email).toBe("user@example.com");
+    expect(payload.username).toBe("regular");
     expect(typeof payload.userId).toBe("number");
   });
 
