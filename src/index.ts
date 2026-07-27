@@ -41,10 +41,4 @@ console.log(
   `   POST http://localhost:${PORT}/auth/register - Register new user`
 );
 console.log(`   POST http://localhost:${PORT}/auth/login    - Login user`);
-console.log(
-  `   GET  http://localhost:${PORT}/articles      - Get all articles (public)`
-);
-console.log(
-  `   POST http://localhost:${PORT}/articles      - Create article (auth required)`
-);
 console.log("\nPress Ctrl+C to stop the server.");

@@ -33,24 +33,11 @@ export async function createSchema(): Promise<void> {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS articles (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      title VARCHAR(255) NOT NULL,
-      body TEXT NOT NULL,
-      category VARCHAR(100) NOT NULL,
-      submitted_by INT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `);
 }
 
 /** Empties every table so each test starts from a known state. */
 export async function resetDatabase(): Promise<void> {
   await pool.query("SET FOREIGN_KEY_CHECKS = 0");
-  await pool.query("TRUNCATE TABLE articles");
   await pool.query("TRUNCATE TABLE users");
   await pool.query("SET FOREIGN_KEY_CHECKS = 1");
 }

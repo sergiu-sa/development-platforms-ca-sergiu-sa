@@ -11,18 +11,17 @@ import { cors } from "hono/cors";
 import { config } from "./config/env.js";
 import { pool } from "./db/connection.js";
 import { authRoutes } from "./modules/auth/auth.route.js";
-import { articleRoutes } from "./modules/articles/articles.route.js";
 
 const app = new Hono();
 
 // CORS - only for the API routes, and only for origins we explicitly name.
 // The bundled frontend is same-origin, so it needs no CORS headers; this exists
 // purely for a separately hosted frontend. No ALLOWED_ORIGINS means no CORS.
-// Bare paths are listed alongside the wildcards because "/articles/*" does not
-// match "/articles" itself.
+// Bare paths are listed alongside the wildcards because "/auth/*" does not
+// match "/auth" itself.
 if (config.allowedOrigins.length > 0) {
   const corsMiddleware = cors({ origin: config.allowedOrigins });
-  const apiPaths = ["/auth", "/auth/*", "/articles", "/articles/*"];
+  const apiPaths = ["/auth", "/auth/*"];
 
   for (const path of apiPaths) {
     app.use(path, corsMiddleware);
@@ -54,7 +53,6 @@ app.get("/health", async (c) => {
 // Mount API routes. The static catch-all must stay last so it cannot shadow
 // the API.
 app.route("/auth", authRoutes);
-app.route("/articles", articleRoutes);
 app.use("/*", serveStatic({ root: "./public" }));
 
 app.get("/", serveStatic({ path: "./public/index.html" }));
