@@ -41,4 +41,5 @@ console.log(
   `   POST http://localhost:${PORT}/api/auth/register - Register new user`
 );
 console.log(`   POST http://localhost:${PORT}/api/auth/login    - Login user`);
+console.log(`   GET  http://localhost:${PORT}/api/wire          - Story wire`);
 console.log("\nPress Ctrl+C to stop the server.");

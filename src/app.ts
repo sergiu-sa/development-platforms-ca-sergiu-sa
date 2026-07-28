@@ -11,6 +11,7 @@ import { cors } from "hono/cors";
 import { config } from "./config/env.js";
 import { pool } from "./db/connection.js";
 import { authRoutes } from "./modules/auth/auth.route.js";
+import { wireRoutes } from "./modules/wire/wire.route.js";
 
 const app = new Hono();
 
@@ -42,6 +43,7 @@ api.get("/health", async (c) => {
 });
 
 api.route("/auth", authRoutes);
+api.route("/wire", wireRoutes);
 
 // CORS - only for the API routes, and only for origins we explicitly name.
 // The bundled frontend is same-origin, so it needs no CORS headers; this exists
