@@ -1,4 +1,25 @@
-const API_BASE = "";
+// The server mounts everything it owns under /api, matching how Vercel serves
+// the Hono app alongside these static files on the same origin.
+const API_BASE = "/api";
+
+/**
+ * Sends the user to login after their session has stopped being valid.
+ *
+ * Tokens last 7 days and nothing refreshes them, so expiry is a routine event
+ * rather than an edge case. Without this the page just silently stops working:
+ * requests 401, callers see a generic failure, and the nav still claims the
+ * user is signed in. Clearing the token first is what makes updateNavigation()
+ * tell the truth on the next page.
+ */
+function handleExpiredSession() {
+  localStorage.removeItem("token");
+
+  const returnTo = encodeURIComponent(
+    window.location.pathname + window.location.search
+  );
+
+  window.location.href = `/login.html?expired=1&next=${returnTo}`;
+}
 
 async function apiRequest(endpoint, options = {}) {
   const headers = {
@@ -17,16 +38,38 @@ async function apiRequest(endpoint, options = {}) {
       headers,
     });
 
-    return response.json();
+    // A 401 while carrying a token means the token was rejected - expired,
+    // revoked or malformed. The /auth/ routes are excluded because there a 401
+    // means "wrong password", which must show an inline error rather than
+    // bounce the user somewhere.
+    if (response.status === 401 && token && !endpoint.startsWith("/auth/")) {
+      handleExpiredSession();
+      return {
+        success: false,
+        message: "Your session has expired. Please sign in again.",
+      };
+    }
+
+    // Must be awaited here, not returned as a pending promise. Without the
+    // await, a non-JSON body (a 404 page, a proxy error, a gateway timeout)
+    // rejects outside this try/catch and the caller never sees a result.
+    return await response.json();
   } catch (error) {
     return { success: false, message: "Network error. Please try again." };
   }
 }
 
-export async function getArticles() {
-  return apiRequest("/articles");
+export async function getWire({ section, page } = {}) {
+  const params = new URLSearchParams();
+  if (section) params.set("section", section);
+  if (page) params.set("page", String(page));
+
+  const query = params.toString();
+  return apiRequest(`/wire${query ? `?${query}` : ""}`);
 }
 
+// Orphaned along with create.html, which the frontend rebuild replaces
+// wholesale. Kept only so create.js still resolves its import.
 export async function createArticle(title, body, category) {
   return apiRequest("/articles", {
     method: "POST",
@@ -41,10 +84,10 @@ export async function login(email, password) {
   });
 }
 
-export async function register(email, password) {
+export async function register(email, username, password) {
   return apiRequest("/auth/register", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, username, password }),
   });
 }
 

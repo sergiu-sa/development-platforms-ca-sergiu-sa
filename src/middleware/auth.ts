@@ -6,10 +6,12 @@
 
 import { Context, Next } from "hono";
 import jwt from "jsonwebtoken";
+import { config } from "../config/env.js";
 
 export interface JWTPayload {
   userId: number;
   email: string;
+  username: string;
   iat?: number;
   exp?: number;
 }
@@ -36,7 +38,7 @@ export async function authMiddleware(c: Context, next: Next) {
   }
 
   const token = authHeader.split(" ")[1];
-  const jwtSecret = process.env.JWT_SECRET;
+  const jwtSecret = config.jwtSecret;
 
   if (!jwtSecret) {
     console.error("JWT_SECRET is not defined in environment variables!");

@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: news_api_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd=pg_isready
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The suite reads .env.test. These are throwaway CI credentials for the
+      # service container above, so there is nothing here worth a secret.
+      # The database name must end in "_test" or tests/helpers/db.ts refuses
+      # to run.
+      - name: Write test environment
+        run: |
+          cat > .env.test <<'EOF'
+          DATABASE_URL=postgresql://postgres:ci_password@127.0.0.1:5432/news_api_test
+          JWT_SECRET=ci_secret_not_used_anywhere_real
+          GUARDIAN_API_KEY=ci_key_never_sent_anywhere
+          EOF
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

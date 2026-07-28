@@ -1,45 +1,56 @@
 /**
  * Database Connection Module
- * MySQL connection pool with production-ready settings.
+ * Postgres connection pool. Reads its configuration from config/env.ts.
  */
 
-import mysql from "mysql2/promise";
-import dotenv from "dotenv";
+import pg from "pg";
+import { config } from "../config/env.js";
 
-dotenv.config();
+const { Pool } = pg;
 
-const pool = mysql.createPool({
-  host: process.env.MYSQLHOST || "localhost",
-  port: Number(process.env.MYSQLPORT) || 3306,
-  user: process.env.MYSQLUSER || "root",
-  password: process.env.MYSQLPASSWORD || "",
-  database: process.env.MYSQLDATABASE || "news_api",
-  connectionLimit: 10,
-  waitForConnections: true,
-  queueLimit: 0,
-  connectTimeout: 10000,
-  enableKeepAlive: true,
-  keepAliveInitialDelay: 10000,
+/**
+ * Local Postgres runs without TLS; hosted Postgres (Neon) requires it.
+ * Deciding from the URL keeps one code path working in both places.
+ *
+ * Parses the hostname rather than pattern-matching the whole string, so a
+ * password containing "@" or "localhost" cannot flip the decision. Fails
+ * closed to TLS on an unparseable URL.
+ */
+function sslSetting(): pg.PoolConfig["ssl"] {
+  const localHosts = ["localhost", "127.0.0.1", "::1"];
+
+  try {
+    const { hostname } = new URL(config.databaseUrl);
+    return localHosts.includes(hostname) ? false : { rejectUnauthorized: true };
+  } catch {
+    return { rejectUnauthorized: true };
+  }
+}
+
+const pool = new Pool({
+  connectionString: config.databaseUrl,
+  ssl: sslSetting(),
+  max: 10,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
 });
 
 // Test connection on startup
 export async function testConnection(): Promise<boolean> {
   try {
-    const connection = await pool.getConnection();
+    const client = await pool.connect();
     console.log("✅ Database connection successful!");
-    connection.release();
+    client.release();
     return true;
   } catch (error) {
     console.error("❌ Database connection failed!");
     console.error("Error details:", error);
     console.error("\n📋 Troubleshooting checklist:");
-    console.error("   1. Is MySQL running on your computer?");
+    console.error("   1. Is Postgres running? (brew services list)");
     console.error("   2. Did you create a .env file from .env.example?");
-    console.error("   3. Are your database credentials correct in .env?");
-    console.error('   4. Did you create the "news_api" database?');
-    console.error(
-      "   5. Did you run the database-schema.sql file in MySQL Workbench?"
-    );
+    console.error("   3. Is DATABASE_URL correct?");
+    console.error('   4. Did you create the "news_api" database? (createdb)');
+    console.error("   5. Did you run db/schema.sql against it?");
     return false;
   }
 }

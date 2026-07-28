@@ -9,145 +9,198 @@ import { zValidator } from "@hono/zod-validator";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { pool } from "../../db/connection.js";
+import { config } from "../../config/env.js";
 import { registerSchema, loginSchema } from "./auth.schema.js";
-import { RowDataPacket, ResultSetHeader } from "mysql2";
+import { rateLimit } from "../../middleware/rate-limit.js";
 
 const authRoutes = new Hono();
 
-// POST /auth/register - Create new user account
-authRoutes.post("/register", zValidator("json", registerSchema), async (c) => {
-  try {
-    const { email, password } = c.req.valid("json");
-
-    // Check if email already exists
-    const [existingUsers] = await pool.query<RowDataPacket[]>(
-      "SELECT id FROM users WHERE email = ?",
-      [email]
-    );
-
-    if (existingUsers.length > 0) {
-      return c.json(
-        {
-          success: false,
-          message: "A user with this email already exists",
-        },
-        409
-      );
-    }
-
-    // Hash password with bcrypt
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // Insert new user
-    const [result] = await pool.query<ResultSetHeader>(
-      "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-      [email, passwordHash]
-    );
-
-    return c.json(
-      {
-        success: true,
-        message: "User registered successfully",
-        user: {
-          id: result.insertId,
-          email: email,
-        },
-      },
-      201
-    );
-  } catch (error) {
-    console.error("Registration error:", error);
-    return c.json(
-      {
-        success: false,
-        message: "An error occurred during registration",
-      },
-      500
-    );
-  }
+// Both endpoints are unauthenticated and guess-able, so they are the natural
+// target for credential stuffing. Login gets the tighter budget; register is
+// looser because a person filling in a form can legitimately trip validation
+// several times.
+const loginRateLimit = rateLimit({
+  scope: "auth:login",
+  limit: 10,
+  windowMinutes: 15,
 });
 
-// POST /auth/login - Authenticate user and return JWT token
-authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
-  try {
-    const { email, password } = c.req.valid("json");
+const registerRateLimit = rateLimit({
+  scope: "auth:register",
+  limit: 20,
+  windowMinutes: 60,
+});
 
-    // Find user by email
-    const [users] = await pool.query<RowDataPacket[]>(
-      "SELECT id, email, password_hash FROM users WHERE email = ?",
-      [email]
-    );
+// POST /auth/register - Create new user account
+authRoutes.post(
+  "/register",
+  registerRateLimit,
+  zValidator("json", registerSchema),
+  async (c) => {
+    try {
+      const { email, username, password } = c.req.valid("json");
 
-    if (users.length === 0) {
-      // Vague message prevents email enumeration attacks
-      return c.json(
-        {
-          success: false,
-          message: "Invalid email or password",
-        },
-        401
+      // Check whether either identifier is taken. Usernames are compared
+      // case-insensitively so "Alice" cannot shadow "alice" on article bylines.
+      const { rows: existingUsers } = await pool.query<{
+        email: string;
+        username: string;
+      }>(
+        `SELECT email, username FROM users
+       WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($2)`,
+        [email, username]
       );
-    }
 
-    const user = users[0];
+      if (existingUsers.length > 0) {
+        const emailTaken = existingUsers.some(
+          (user) => user.email.toLowerCase() === email.toLowerCase()
+        );
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+        return c.json(
+          {
+            success: false,
+            message: emailTaken
+              ? "A user with this email already exists"
+              : "That username is already taken",
+          },
+          409
+        );
+      }
 
-    if (!isPasswordValid) {
-      return c.json(
-        {
-          success: false,
-          message: "Invalid email or password",
-        },
-        401
+      // Hash password with bcrypt
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Insert new user
+      const { rows } = await pool.query<{ id: number }>(
+        `INSERT INTO users (email, username, password_hash)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+        [email, username, passwordHash]
       );
-    }
 
-    const jwtSecret = process.env.JWT_SECRET;
-
-    if (!jwtSecret) {
-      console.error("JWT_SECRET is not defined!");
+      return c.json(
+        {
+          success: true,
+          message: "User registered successfully",
+          user: {
+            id: rows[0].id,
+            email: email,
+            username: username,
+          },
+        },
+        201
+      );
+    } catch (error) {
+      console.error("Registration error:", error);
       return c.json(
         {
           success: false,
-          message: "Server configuration error",
+          message: "An error occurred during registration",
         },
         500
       );
     }
-
-    // Create JWT token (expires in 7 days)
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-      },
-      jwtSecret,
-      {
-        expiresIn: "7d",
-      }
-    );
-
-    return c.json({
-      success: true,
-      message: "Login successful",
-      token: token,
-      user: {
-        id: user.id,
-        email: user.email,
-      },
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    return c.json(
-      {
-        success: false,
-        message: "An error occurred during login",
-      },
-      500
-    );
   }
-});
+);
+
+// POST /auth/login - Authenticate user and return JWT token
+authRoutes.post(
+  "/login",
+  loginRateLimit,
+  zValidator("json", loginSchema),
+  async (c) => {
+    try {
+      const { email, password } = c.req.valid("json");
+
+      // Find user by email. LOWER() matches the unique index, so casing in the
+      // submitted address never prevents a legitimate login.
+      const { rows: users } = await pool.query<{
+        id: number;
+        email: string;
+        username: string;
+        password_hash: string;
+      }>(
+        `SELECT id, email, username, password_hash FROM users
+       WHERE LOWER(email) = LOWER($1)`,
+        [email]
+      );
+
+      if (users.length === 0) {
+        // Vague message prevents email enumeration attacks
+        return c.json(
+          {
+            success: false,
+            message: "Invalid email or password",
+          },
+          401
+        );
+      }
+
+      const user = users[0];
+
+      // Verify password
+      const isPasswordValid = await bcrypt.compare(
+        password,
+        user.password_hash
+      );
+
+      if (!isPasswordValid) {
+        return c.json(
+          {
+            success: false,
+            message: "Invalid email or password",
+          },
+          401
+        );
+      }
+
+      const jwtSecret = config.jwtSecret;
+
+      if (!jwtSecret) {
+        console.error("JWT_SECRET is not defined!");
+        return c.json(
+          {
+            success: false,
+            message: "Server configuration error",
+          },
+          500
+        );
+      }
+
+      // Create JWT token (expires in 7 days)
+      const token = jwt.sign(
+        {
+          userId: user.id,
+          email: user.email,
+          username: user.username,
+        },
+        jwtSecret,
+        {
+          expiresIn: "7d",
+        }
+      );
+
+      return c.json({
+        success: true,
+        message: "Login successful",
+        token: token,
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+        },
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      return c.json(
+        {
+          success: false,
+          message: "An error occurred during login",
+        },
+        500
+      );
+    }
+  }
+);
 
 export { authRoutes };

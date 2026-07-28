@@ -1,13 +1,16 @@
 {
-  "name": "news-api",
+  "name": "lede",
   "version": "1.0.0",
-  "description": "A REST API for a news platform - Development Platforms Course Assignment",
+  "description": "Lede - a news wire that readers curate into published briefings",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.check.json",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -20,21 +23,23 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@hono/node-server": "^1.11.0",
+    "@hono/node-server": "^2.0.12",
     "@hono/zod-validator": "^0.2.2",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.0",
-    "hono": "^4.4.0",
+    "hono": "^4.12.32",
     "jsonwebtoken": "^9.0.2",
-    "mysql2": "^3.9.0",
+    "pg": "^8.22.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.12.0",
+    "@types/pg": "^8.20.0",
     "prettier": "^3.2.0",
     "tsx": "^4.10.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.10"
   }
 }

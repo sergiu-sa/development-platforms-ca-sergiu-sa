@@ -13,6 +13,25 @@ document.addEventListener("DOMContentLoaded", () => {
   const errorMessage = document.getElementById("error-message");
   const successMessage = document.getElementById("success-message");
 
+  // api.js redirects here with ?expired=1 when a token stops being accepted.
+  // Saying so beats dumping the user on a bare login form with no explanation.
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("expired") === "1") {
+    errorMessage.textContent =
+      "Your session has expired. Please sign in again.";
+    errorMessage.classList.remove("hidden");
+  }
+
+  // Only same-origin paths are honoured, so ?next= cannot be used to bounce
+  // someone to another site after they sign in.
+  function destinationAfterLogin() {
+    const next = params.get("next");
+    return next && next.startsWith("/") && !next.startsWith("//")
+      ? next
+      : "/index.html";
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -38,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
       successMessage.classList.remove("hidden");
 
       setTimeout(() => {
-        window.location.href = "/index.html";
+        window.location.href = destinationAfterLogin();
       }, 1000);
     } else {
       errorMessage.textContent = response.message || "Login failed";
