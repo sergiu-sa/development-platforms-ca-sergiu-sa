@@ -32,7 +32,7 @@ export async function createSchema(): Promise<void> {
 /** Empties every table so each test starts from a known state. */
 export async function resetDatabase(): Promise<void> {
   await pool.query(
-    "TRUNCATE TABLE briefing_items, briefings, stories, wire_sync, users RESTART IDENTITY CASCADE"
+    "TRUNCATE TABLE briefing_items, briefings, stories, wire_sync, auth_attempts, users RESTART IDENTITY CASCADE"
   );
 }
 

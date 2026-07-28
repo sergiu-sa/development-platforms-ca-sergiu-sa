@@ -8,12 +8,46 @@
 import { Hono } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { cors } from "hono/cors";
+import { secureHeaders } from "hono/secure-headers";
 import { config } from "./config/env.js";
 import { pool } from "./db/connection.js";
 import { authRoutes } from "./modules/auth/auth.route.js";
 import { wireRoutes } from "./modules/wire/wire.route.js";
 
 const app = new Hono();
+
+// Security headers on everything, API and static files alike. Registered first
+// so it wraps every later handler.
+//
+// The CSP is written against what the current pages actually load. Two entries
+// exist only because Tailwind ships from a CDN and compiles in the browser:
+// the cdn.tailwindcss.com script source, and 'unsafe-eval' for its JIT. The
+// Vite rebuild removes both, at which point this should tighten to 'self'.
+//
+// img-src carries media.guim.co.uk because wire thumbnails are hotlinked from
+// the Guardian rather than proxied.
+app.use(
+  "*",
+  secureHeaders({
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://cdn.tailwindcss.com", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "https://media.guim.co.uk", "data:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+    },
+    // Only meaningful over HTTPS; harmless locally and correct once deployed.
+    strictTransportSecurity: "max-age=31536000; includeSubDomains",
+    xFrameOptions: "DENY",
+    xContentTypeOptions: "nosniff",
+    referrerPolicy: "strict-origin-when-cross-origin",
+  })
+);
 
 // Everything the server owns lives under /api. Vercel serves the Hono app at
 // /api/*, with the frontend as static assets on the same origin, so this prefix

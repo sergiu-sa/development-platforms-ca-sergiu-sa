@@ -27,6 +27,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_idx
 CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_idx
   ON users (LOWER(username));
 
+-- Failed authentication attempts, backing the rate limiter.
+--
+-- Deliberately in Postgres rather than process memory: the deploy target is
+-- Vercel, where each serverless instance has its own memory and cold starts
+-- reset it, so an in-memory counter would barely slow an attacker down.
+CREATE TABLE IF NOT EXISTS auth_attempts (
+  id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  scope        TEXT NOT NULL,
+  identifier   TEXT NOT NULL,
+  attempted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS auth_attempts_lookup_idx
+  ON auth_attempts (scope, identifier, attempted_at DESC);
+
 CREATE TABLE IF NOT EXISTS stories (
   id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   external_id   TEXT NOT NULL UNIQUE,

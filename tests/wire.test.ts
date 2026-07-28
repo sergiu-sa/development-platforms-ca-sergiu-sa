@@ -209,6 +209,21 @@ describe("GET /api/wire", () => {
     expect(response.status).toBe(400);
   });
 
+  // A page number large enough to push the OFFSET into scientific notation
+  // ("2e+21") makes Postgres reject it as a bigint, which surfaced as a 500
+  // reachable straight from the URL bar.
+  it("rejects a page number too large to be a valid offset", async () => {
+    const response = await get("/api/wire?page=99999999999999999999");
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects an absurdly long run of digits", async () => {
+    const response = await get(`/api/wire?page=${"9".repeat(400)}`);
+
+    expect(response.status).toBe(400);
+  });
+
   // The key is server-side only. It must never appear in a response body.
   it("never exposes the api key", async () => {
     const response = await get("/api/wire");
