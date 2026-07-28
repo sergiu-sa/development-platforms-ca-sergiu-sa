@@ -1,6 +1,7 @@
-# News API
+# Lede
 
-A news platform built with Hono, TypeScript, and Postgres.
+A news wire that readers curate into published briefings. Built with Hono,
+TypeScript, and Postgres.
 
 ## Description
 
