@@ -35,10 +35,10 @@ console.log(
   `   GET  http://localhost:${PORT}/              - Home page (frontend)`
 );
 console.log(
-  `   GET  http://localhost:${PORT}/health        - Database health check`
+  `   GET  http://localhost:${PORT}/api/health        - Database health check`
 );
 console.log(
-  `   POST http://localhost:${PORT}/auth/register - Register new user`
+  `   POST http://localhost:${PORT}/api/auth/register - Register new user`
 );
-console.log(`   POST http://localhost:${PORT}/auth/login    - Login user`);
+console.log(`   POST http://localhost:${PORT}/api/auth/login    - Login user`);
 console.log("\nPress Ctrl+C to stop the server.");

@@ -1,4 +1,6 @@
-const API_BASE = "";
+// The server mounts everything it owns under /api, matching how Vercel serves
+// the Hono app alongside these static files on the same origin.
+const API_BASE = "/api";
 
 async function apiRequest(endpoint, options = {}) {
   const headers = {

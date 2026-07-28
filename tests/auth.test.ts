@@ -14,9 +14,9 @@ const validRegistration = {
   password: "password123",
 };
 
-describe("POST /auth/register", () => {
+describe("POST /api/auth/register", () => {
   it("creates a user and returns its id", async () => {
-    const response = await post("/auth/register", validRegistration);
+    const response = await post("/api/auth/register", validRegistration);
 
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
@@ -26,7 +26,7 @@ describe("POST /auth/register", () => {
   });
 
   it("never returns the password or its hash", async () => {
-    const response = await post("/auth/register", validRegistration);
+    const response = await post("/api/auth/register", validRegistration);
 
     const serialised = JSON.stringify(response.body);
     expect(serialised).not.toContain("password123");
@@ -34,9 +34,9 @@ describe("POST /auth/register", () => {
   });
 
   it("rejects a duplicate email with 409", async () => {
-    await post("/auth/register", validRegistration);
+    await post("/api/auth/register", validRegistration);
 
-    const response = await post("/auth/register", {
+    const response = await post("/api/auth/register", {
       ...validRegistration,
       username: "someoneelse",
       password: "differentpassword",
@@ -47,9 +47,9 @@ describe("POST /auth/register", () => {
   });
 
   it("rejects a duplicate username with 409", async () => {
-    await post("/auth/register", validRegistration);
+    await post("/api/auth/register", validRegistration);
 
-    const response = await post("/auth/register", {
+    const response = await post("/api/auth/register", {
       ...validRegistration,
       email: "different@example.com",
     });
@@ -60,9 +60,9 @@ describe("POST /auth/register", () => {
 
   // Usernames are bylines, so "Alice" must not be able to shadow "alice".
   it("rejects a username differing only by case", async () => {
-    await post("/auth/register", validRegistration);
+    await post("/api/auth/register", validRegistration);
 
-    const response = await post("/auth/register", {
+    const response = await post("/api/auth/register", {
       ...validRegistration,
       email: "different@example.com",
       username: "NewComer",
@@ -74,9 +74,9 @@ describe("POST /auth/register", () => {
   // MySQL's collation gave this for free. Postgres needs the LOWER() index,
   // and without it the same person could register twice.
   it("rejects an email differing only by case", async () => {
-    await post("/auth/register", validRegistration);
+    await post("/api/auth/register", validRegistration);
 
-    const response = await post("/auth/register", {
+    const response = await post("/api/auth/register", {
       ...validRegistration,
       email: "NEW@example.com",
       username: "someoneelse",
@@ -86,7 +86,7 @@ describe("POST /auth/register", () => {
   });
 
   it("rejects a malformed email", async () => {
-    const response = await post("/auth/register", {
+    const response = await post("/api/auth/register", {
       ...validRegistration,
       email: "not-an-email",
     });
@@ -95,7 +95,7 @@ describe("POST /auth/register", () => {
   });
 
   it("rejects a password shorter than 6 characters", async () => {
-    const response = await post("/auth/register", {
+    const response = await post("/api/auth/register", {
       ...validRegistration,
       password: "12345",
     });
@@ -110,7 +110,7 @@ describe("POST /auth/register", () => {
     ["containing markup", "<script>"],
     ["containing an at sign", "looks@email.com"],
   ])("rejects a username %s", async (_label, username) => {
-    const response = await post("/auth/register", {
+    const response = await post("/api/auth/register", {
       ...validRegistration,
       username,
     });
@@ -119,15 +119,15 @@ describe("POST /auth/register", () => {
   });
 
   it("rejects a request with missing fields", async () => {
-    const response = await post("/auth/register", {});
+    const response = await post("/api/auth/register", {});
 
     expect(response.status).toBe(400);
   });
 });
 
-describe("POST /auth/login", () => {
+describe("POST /api/auth/login", () => {
   beforeEach(async () => {
-    await post("/auth/register", {
+    await post("/api/auth/register", {
       email: "user@example.com",
       username: "regular",
       password: "password123",
@@ -135,7 +135,7 @@ describe("POST /auth/login", () => {
   });
 
   it("returns a token signed with the configured secret", async () => {
-    const response = await post("/auth/login", {
+    const response = await post("/api/auth/login", {
       email: "user@example.com",
       password: "password123",
     });
@@ -155,7 +155,7 @@ describe("POST /auth/login", () => {
   });
 
   it("logs in regardless of email casing", async () => {
-    const response = await post("/auth/login", {
+    const response = await post("/api/auth/login", {
       email: "USER@example.com",
       password: "password123",
     });
@@ -165,7 +165,7 @@ describe("POST /auth/login", () => {
   });
 
   it("rejects a wrong password with 401", async () => {
-    const response = await post("/auth/login", {
+    const response = await post("/api/auth/login", {
       email: "user@example.com",
       password: "wrongpassword",
     });
@@ -177,12 +177,12 @@ describe("POST /auth/login", () => {
   // Both failure modes must be indistinguishable, otherwise the endpoint
   // becomes an oracle for which email addresses are registered.
   it("gives an identical response for unknown email and wrong password", async () => {
-    const wrongPassword = await post("/auth/login", {
+    const wrongPassword = await post("/api/auth/login", {
       email: "user@example.com",
       password: "wrongpassword",
     });
 
-    const unknownEmail = await post("/auth/login", {
+    const unknownEmail = await post("/api/auth/login", {
       email: "nobody@example.com",
       password: "password123",
     });

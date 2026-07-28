@@ -66,12 +66,12 @@ export async function registerAndLogin(
   username = email.split("@")[0],
   password = "password123"
 ): Promise<{ token: string; userId: number; username: string }> {
-  const registration = await post("/auth/register", {
+  const registration = await post("/api/auth/register", {
     email,
     username,
     password,
   });
-  const login = await post("/auth/login", { email, password });
+  const login = await post("/api/auth/login", { email, password });
 
   return {
     token: login.body.token,

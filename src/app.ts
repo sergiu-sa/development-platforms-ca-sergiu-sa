@@ -14,22 +14,13 @@ import { authRoutes } from "./modules/auth/auth.route.js";
 
 const app = new Hono();
 
-// CORS - only for the API routes, and only for origins we explicitly name.
-// The bundled frontend is same-origin, so it needs no CORS headers; this exists
-// purely for a separately hosted frontend. No ALLOWED_ORIGINS means no CORS.
-// Bare paths are listed alongside the wildcards because "/auth/*" does not
-// match "/auth" itself.
-if (config.allowedOrigins.length > 0) {
-  const corsMiddleware = cors({ origin: config.allowedOrigins });
-  const apiPaths = ["/auth", "/auth/*"];
-
-  for (const path of apiPaths) {
-    app.use(path, corsMiddleware);
-  }
-}
+// Everything the server owns lives under /api. Vercel serves the Hono app at
+// /api/*, with the frontend as static assets on the same origin, so this prefix
+// is the deployment shape rather than decoration.
+const api = new Hono();
 
 // Health check endpoint for monitoring
-app.get("/health", async (c) => {
+api.get("/health", async (c) => {
   try {
     await pool.query("SELECT 1");
     return c.json({
@@ -50,9 +41,24 @@ app.get("/health", async (c) => {
   }
 });
 
-// Mount API routes. The static catch-all must stay last so it cannot shadow
-// the API.
-app.route("/auth", authRoutes);
+api.route("/auth", authRoutes);
+
+// CORS - only for the API routes, and only for origins we explicitly name.
+// The bundled frontend is same-origin, so it needs no CORS headers; this exists
+// purely for a separately hosted frontend. No ALLOWED_ORIGINS means no CORS.
+// The bare path is listed alongside the wildcard because "/api/*" does not
+// match "/api" itself.
+if (config.allowedOrigins.length > 0) {
+  const corsMiddleware = cors({ origin: config.allowedOrigins });
+
+  for (const path of ["/api", "/api/*"]) {
+    app.use(path, corsMiddleware);
+  }
+}
+
+app.route("/api", api);
+
+// The static catch-all must stay last so it cannot shadow the API.
 app.use("/*", serveStatic({ root: "./public" }));
 
 app.get("/", serveStatic({ path: "./public/index.html" }));
