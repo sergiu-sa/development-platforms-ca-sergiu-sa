@@ -28,10 +28,17 @@ async function apiRequest(endpoint, options = {}) {
   }
 }
 
-export async function getArticles() {
-  return apiRequest("/articles");
+export async function getWire({ section, page } = {}) {
+  const params = new URLSearchParams();
+  if (section) params.set("section", section);
+  if (page) params.set("page", String(page));
+
+  const query = params.toString();
+  return apiRequest(`/wire${query ? `?${query}` : ""}`);
 }
 
+// Orphaned along with create.html, which the frontend rebuild replaces
+// wholesale. Kept only so create.js still resolves its import.
 export async function createArticle(title, body, category) {
   return apiRequest("/articles", {
     method: "POST",
