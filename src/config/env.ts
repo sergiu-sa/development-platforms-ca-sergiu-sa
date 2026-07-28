@@ -11,7 +11,10 @@ dotenv.config({
   path: process.env.NODE_ENV === "test" ? ".env.test" : ".env",
 });
 
-const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET"];
+// GUARDIAN_API_KEY is required rather than optional: the wire is the homepage,
+// and the key is server-side only, so a missing key should fail loudly at
+// startup rather than as an empty feed in production.
+const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET", "GUARDIAN_API_KEY"];
 
 // Validates all required environment variables are set
 export function validateEnv(): void {
@@ -52,12 +55,34 @@ function parseAllowedOrigins(): string[] {
     .filter((origin) => origin.length > 0);
 }
 
+/**
+ * Numeric env var with a fallback. Written out rather than using
+ * `Number(x) || fallback` because that idiom silently rejects 0, and 0 is a
+ * legitimate TTL in development ("always refresh").
+ */
+function numberFromEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+
+  if (raw === undefined || raw.trim() === "") {
+    return fallback;
+  }
+
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 export const config = {
   port: Number(process.env.PORT) || 3000,
   databaseUrl: process.env.DATABASE_URL || "",
   jwtSecret: process.env.JWT_SECRET || "",
   allowedOrigins: parseAllowedOrigins(),
   isProduction: process.env.NODE_ENV === "production",
+  guardianApiKey: process.env.GUARDIAN_API_KEY || "",
+  // How long cached stories stay fresh before the next request refills them.
+  wireTtlMinutes: numberFromEnv("WIRE_TTL_MINUTES", 15),
+  // Floor on the gap between upstream attempts, successful or not. This is what
+  // stops an outage from retrying on every request and draining the daily limit.
+  wireRetryCooldownMinutes: numberFromEnv("WIRE_RETRY_COOLDOWN_MINUTES", 5),
 };
 
 /**

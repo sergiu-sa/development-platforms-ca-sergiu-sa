@@ -42,6 +42,22 @@ CREATE TABLE IF NOT EXISTS stories (
 CREATE INDEX IF NOT EXISTS stories_recent_idx
   ON stories (published_at DESC, id DESC);
 
+-- Bookkeeping for the wire cache. One row, ever: a BOOLEAN primary key with a
+-- CHECK that it is TRUE makes a second row unrepresentable.
+--
+-- last_attempt_at tracks attempts rather than successes on purpose. Freshness
+-- alone would mean an upstream outage never advances the clock, so every
+-- request retries the Guardian and drains the 500/day budget in minutes.
+CREATE TABLE IF NOT EXISTS wire_sync (
+  id                   BOOLEAN PRIMARY KEY DEFAULT TRUE,
+  last_attempt_at      TIMESTAMPTZ NOT NULL,
+  last_success_at      TIMESTAMPTZ,
+  last_error           TEXT,
+  rate_limit_remaining INTEGER,
+
+  CONSTRAINT wire_sync_singleton CHECK (id)
+);
+
 CREATE TABLE IF NOT EXISTS briefings (
   id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   author_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
