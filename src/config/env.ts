@@ -69,10 +69,10 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || "",
   allowedOrigins: parseAllowedOrigins(),
   isProduction: process.env.NODE_ENV === "production",
-  // Vercel sets this. Every warm serverless instance keeps its own connection
-  // pool, so a pool of 10 per instance exhausts the database's connection limit
-  // quickly; one is enough when an instance handles a single request at a time.
-  isServerless: process.env.VERCEL === "1",
+  // Vercel sets VERCEL=1. Every warm serverless instance keeps its own
+  // connection pool, so a pool of 10 per instance exhausts the database's
+  // connection limit quickly; one is enough when an instance handles a single
+  // request at a time.
   databasePoolMax: numberFromEnv(
     "DATABASE_POOL_MAX",
     process.env.VERCEL === "1" ? 1 : 10

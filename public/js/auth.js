@@ -38,13 +38,11 @@ export function updateNavigation() {
 
   const loginLink = document.getElementById("nav-login");
   const registerLink = document.getElementById("nav-register");
-  const createLink = document.getElementById("nav-create");
   const logoutBtn = document.getElementById("nav-logout");
   const userLabel = document.getElementById("nav-user-email");
 
   if (loginLink) loginLink.style.display = loggedIn ? "none" : "block";
   if (registerLink) registerLink.style.display = loggedIn ? "none" : "block";
-  if (createLink) createLink.style.display = loggedIn ? "block" : "none";
   if (logoutBtn) {
     logoutBtn.style.display = loggedIn ? "block" : "none";
     logoutBtn.onclick = logout;
