@@ -33,6 +33,27 @@ const PORT = config.port;
 // page resolve.
 const server = new Hono();
 
+// Local development only: never let the browser store these responses.
+//
+// Without a Cache-Control header the browser decides for itself, and Chrome
+// keeps the whole rendered page in its back/forward cache. Two symptoms
+// followed, both of which cost real debugging time:
+//
+//   1. Stopping the server and reloading restored a ghost copy of the page
+//      rather than an honest error. Measured: navigation type "back_forward",
+//      zero bytes transferred, no requests made. The site looked alive while
+//      nothing was running.
+//   2. Editing a file in public/ kept serving the previous version until a
+//      hard reload, which surfaces as a baffling "does not provide an export
+//      named X" when a stale ES module meets a fresh one.
+//
+// Production is unaffected: Vercel's CDN sets its own caching headers and
+// never runs this file.
+server.use("*", async (c, next) => {
+  await next();
+  c.header("Cache-Control", "no-store");
+});
+
 server.route("/", app);
 server.use("/*", serveStatic({ root: "./public" }));
 server.get("/", serveStatic({ path: "./public/index.html" }));
