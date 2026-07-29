@@ -55,8 +55,8 @@ server.use("*", async (c, next) => {
 });
 
 server.route("/", app);
-server.use("/*", serveStatic({ root: "./public" }));
-server.get("/", serveStatic({ path: "./public/index.html" }));
+server.use("/*", serveStatic({ root: "./dist/web" }));
+server.get("/", serveStatic({ path: "./dist/web/index.html" }));
 
 console.log("🚀 Starting News API server...");
 console.log(`📍 Server will run on: http://localhost:${PORT}`);
