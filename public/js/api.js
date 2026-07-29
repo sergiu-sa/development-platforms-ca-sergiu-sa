@@ -68,15 +68,6 @@ export async function getWire({ section, page } = {}) {
   return apiRequest(`/wire${query ? `?${query}` : ""}`);
 }
 
-// Orphaned along with create.html, which the frontend rebuild replaces
-// wholesale. Kept only so create.js still resolves its import.
-export async function createArticle(title, body, category) {
-  return apiRequest("/articles", {
-    method: "POST",
-    body: JSON.stringify({ title, body, category }),
-  });
-}
-
 export async function login(email, password) {
   return apiRequest("/auth/login", {
     method: "POST",
