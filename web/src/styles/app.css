@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/* wdth.css, NOT the package default - the default is weight-only and the
+   width axis is the whole point. Fraunces likewise needs opsz.css for
+   optical sizing. Italic is deliberately not loaded: nothing in this step
+   uses it, and it costs 81 KB. Add it with the board. */
+@import "@fontsource-variable/archivo/wdth.css";
+@import "@fontsource-variable/fraunces/opsz.css";
+
+@theme {
+  --color-paper: #efece4;
+  --color-board: #e4dfd2;
+  --color-clipping: #f6f4ee;
+  --color-hole: #dcd7c9;
+  --color-ink: #141310;
+  --color-signal: #c2371b;
+
+  --font-wire: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-voice: "Fraunces Variable", ui-serif, Georgia, serif;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-wire);
+}
+
+/* One rule consumes the ramp. Do not generate a Tailwind class per step -
+   that is 63 classes describing a continuous function. */
+.wire-head {
+  font-family: var(--font-wire);
+  font-size: calc(var(--size) * 1px);
+  font-variation-settings:
+    "wdth" var(--wdth),
+    "wght" var(--wght);
+  opacity: var(--opacity);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
