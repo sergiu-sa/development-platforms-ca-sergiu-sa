@@ -6,7 +6,6 @@
  */
 
 import { Hono } from "hono";
-import { serveStatic } from "@hono/node-server/serve-static";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { config } from "./config/env.js";
@@ -94,9 +93,8 @@ if (config.allowedOrigins.length > 0) {
 
 app.route("/api", api);
 
-// The static catch-all must stay last so it cannot shadow the API.
-app.use("/*", serveStatic({ root: "./public" }));
-
-app.get("/", serveStatic({ path: "./public/index.html" }));
-
+// API only, deliberately. The frontend is served by src/index.ts in local
+// development and by Vercel's CDN in production, so nothing in here may depend
+// on a Node server being present - @hono/node-server's serveStatic cannot run
+// in a serverless function.
 export { app };

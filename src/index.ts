@@ -1,18 +1,41 @@
 /**
- * News API - Main Server Entry Point
+ * Local development entry point.
  *
- * Validates the environment, then starts the HTTP server. The app itself is
- * assembled in src/app.ts.
+ * Validates the environment, wraps the API in a server that also serves the
+ * frontend, and listens. Vercel never runs this file - it calls api/index.ts
+ * instead, and serves public/ from its CDN. That split is why static file
+ * serving lives here rather than in app.ts.
  */
 
+import { Hono } from "hono";
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { validateEnv, config } from "./config/env.js";
 import { testConnection } from "./db/connection.js";
 import { app } from "./app.js";
 
-validateEnv();
+// validateEnv throws so the same check can run in a serverless function. Here,
+// a missing variable should stop the process outright rather than start a
+// server that cannot reach its database.
+try {
+  validateEnv();
+  console.log("✅ Environment variables validated");
+} catch (error) {
+  console.error("❌", error instanceof Error ? error.message : error);
+  process.exit(1);
+}
 
 const PORT = config.port;
+
+// One process serves both halves locally. serveStatic is registered after the
+// API so it cannot shadow it, and the explicit "/" handler stays last because
+// serveStatic calls next() when it finds no file - that is what lets the index
+// page resolve.
+const server = new Hono();
+
+server.route("/", app);
+server.use("/*", serveStatic({ root: "./public" }));
+server.get("/", serveStatic({ path: "./public/index.html" }));
 
 console.log("🚀 Starting News API server...");
 console.log(`📍 Server will run on: http://localhost:${PORT}`);
@@ -25,7 +48,7 @@ testConnection().then((connected) => {
 });
 
 serve({
-  fetch: app.fetch,
+  fetch: server.fetch,
   port: PORT,
 });
 
