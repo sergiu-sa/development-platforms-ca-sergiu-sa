@@ -30,7 +30,7 @@ function sslSetting(): pg.PoolConfig["ssl"] {
 const pool = new Pool({
   connectionString: config.databaseUrl,
   ssl: sslSetting(),
-  max: 10,
+  max: config.databasePoolMax,
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
 });

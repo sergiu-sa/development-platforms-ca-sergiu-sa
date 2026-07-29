@@ -16,32 +16,24 @@ dotenv.config({
 // startup rather than as an empty feed in production.
 const requiredEnvVars = ["DATABASE_URL", "JWT_SECRET", "GUARDIAN_API_KEY"];
 
-// Validates all required environment variables are set
+/**
+ * Validates all required environment variables are set.
+ *
+ * Throws rather than calling process.exit, because this also runs inside a
+ * serverless function where exiting kills the invocation without leaving a
+ * usable log line. src/index.ts catches it and exits for local use, and
+ * api/index.ts lets it surface as a 500 with the reason in Vercel's logs.
+ */
 export function validateEnv(): void {
-  const missing: string[] = [];
-
-  for (const envVar of requiredEnvVars) {
-    if (!process.env[envVar]) {
-      missing.push(envVar);
-    }
-  }
+  const missing = requiredEnvVars.filter((envVar) => !process.env[envVar]);
 
   if (missing.length > 0) {
-    console.error("❌ Missing required environment variables:");
-    console.error("");
-    for (const envVar of missing) {
-      console.error(`   - ${envVar}`);
-    }
-    console.error("");
-    console.error("📋 How to fix:");
-    console.error("   1. Copy .env.example to .env");
-    console.error("   2. Fill in the missing values");
-    console.error("   3. Restart the server");
-    console.error("");
-    process.exit(1);
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}. ` +
+        `Locally, copy .env.example to .env and fill in the missing values. ` +
+        `On a hosted deployment, set them in the project's environment settings.`
+    );
   }
-
-  console.log("✅ Environment variables validated");
 }
 
 // Comma-separated list of extra origins allowed to call the API from a browser.
@@ -77,6 +69,14 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || "",
   allowedOrigins: parseAllowedOrigins(),
   isProduction: process.env.NODE_ENV === "production",
+  // Vercel sets this. Every warm serverless instance keeps its own connection
+  // pool, so a pool of 10 per instance exhausts the database's connection limit
+  // quickly; one is enough when an instance handles a single request at a time.
+  isServerless: process.env.VERCEL === "1",
+  databasePoolMax: numberFromEnv(
+    "DATABASE_POOL_MAX",
+    process.env.VERCEL === "1" ? 1 : 10
+  ),
   guardianApiKey: process.env.GUARDIAN_API_KEY || "",
   // How long cached stories stay fresh before the next request refills them.
   wireTtlMinutes: numberFromEnv("WIRE_TTL_MINUTES", 15),
