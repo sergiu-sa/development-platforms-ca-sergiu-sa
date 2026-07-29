@@ -12,3 +12,5 @@ npm-debug.log*
 
 # Course assignment brief - kept locally for reference, not part of the product
 docs/
+.vercel
+.env*

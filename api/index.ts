@@ -18,4 +18,25 @@ import { app } from "../src/app.js";
 // connection that was never configured.
 validateEnv();
 
-export default handle(app);
+/**
+ * Exported per HTTP method rather than as a default export.
+ *
+ * Vercel reads `export default` as the legacy Node signature `(req, res) =>
+ * void`, where the response is written through `res` and any return value is
+ * discarded. hono/vercel's handler *returns* a Response instead, so a default
+ * export silently produced no reply at all and requests hung until they timed
+ * out. Named method exports select the Web fetch-style signature, which is the
+ * one this handler actually implements.
+ *
+ * Every method the API uses now, plus the ones the briefings routes will need,
+ * so this does not have to be revisited.
+ */
+const handler = handle(app);
+
+export const GET = handler;
+export const POST = handler;
+export const PUT = handler;
+export const PATCH = handler;
+export const DELETE = handler;
+export const OPTIONS = handler;
+export const HEAD = handler;
