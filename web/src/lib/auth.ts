@@ -1,4 +1,4 @@
-export function getToken() {
+function getToken() {
   return localStorage.getItem("token");
 }
 
@@ -6,7 +6,7 @@ export function setToken(token: string) {
   localStorage.setItem("token", token);
 }
 
-export function removeToken() {
+function removeToken() {
   localStorage.removeItem("token");
 }
 
@@ -14,7 +14,7 @@ export function isLoggedIn() {
   return getToken() !== null;
 }
 
-export function getUser() {
+function getUser() {
   const token = getToken();
   if (!token) return null;
 
@@ -27,7 +27,7 @@ export function getUser() {
   }
 }
 
-export function logout() {
+function logout() {
   removeToken();
   window.location.href = "/index.html";
 }

@@ -8,9 +8,7 @@
   <body class="min-h-screen bg-paper text-ink">
     <!-- Navigation -->
     <nav class="border-b border-ink/10">
-      <div
-        class="max-w-3xl mx-auto px-6 py-4 flex justify-between items-center"
-      >
+      <div class="page-shell py-4 flex justify-between items-center">
         <a href="/index.html" class="font-bold tracking-tight">Lede</a>
         <div class="flex items-center gap-4 text-sm">
           <a href="/index.html" class="nav-link">Home</a>
@@ -34,7 +32,11 @@
          cards. The newest story is huge; each story down the page is
          smaller, narrower and lighter. Scrolling down is scrolling
          backwards through the day. -->
-    <div class="wire-page">
+    <div class="page-shell wire-page">
+      <!-- The decay field starts at <h2>, because no single story is the page's
+           subject. Without this the document has no top-level heading at all
+           and the outline begins at level 2. Visually hidden, not absent. -->
+      <h1 class="sr-only">The Wire</h1>
       <aside id="wire-rail" class="wire-rail" aria-hidden="true"></aside>
       <main id="wire-container" class="wire-main">
         <p class="text-sm text-ink/72">Loading the wire...</p>

@@ -120,5 +120,3 @@ export async function register(
     body: JSON.stringify({ email, username, password }),
   });
 }
-
-export { apiRequest, API_BASE };

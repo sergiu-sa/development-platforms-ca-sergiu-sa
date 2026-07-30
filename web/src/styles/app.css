@@ -9,6 +9,10 @@
 
 @theme {
   --color-paper: #efece4;
+  /* board, clipping and hole belong to the briefing board, which is designed
+     in the spec but not built yet. Tailwind tree-shakes unreferenced theme
+     tokens, so they cost nothing in the bundle. Declared here so the palette
+     stays in one place rather than being rediscovered later. */
   --color-board: #e4dfd2;
   --color-clipping: #f6f4ee;
   --color-hole: #dcd7c9;
@@ -59,11 +63,42 @@ body {
    while filling a typical laptop, where the text measure lands near 1160px
    and the lead falls to about three lines. The right padding clears the 4rem
    rail so content runs up to it rather than stopping short. */
-.wire-page {
-  position: relative;
+/* One shell, shared by the nav band and the page body.
+   These were allowed to diverge once: the nav kept a 48rem cap from the
+   pre-redesign layout while .wire-page widened to 84rem, which put the
+   wordmark 280px to the right of the lead headline and left the nav's right
+   edge 200px short of the content's. Both now read from the same rule, so
+   changing the measure moves them together. */
+.page-shell {
   max-width: 84rem;
   margin: 0 auto;
-  padding: 2rem 5.5rem 4rem 2rem;
+  padding-left: 2rem;
+  /* Clears the 4rem fixed rail so content runs up to it, not under it. */
+  padding-right: 5.5rem;
+}
+
+.wire-page {
+  position: relative;
+  padding-top: 2rem;
+  padding-bottom: 4rem;
+}
+
+/* Nav links and the logout button. The old public/css/styles.css defined
+   .nav-link and was deleted with the rest of that tree, which left fourteen
+   elements carrying a class that matched no rule: no hover affordance
+   anywhere in the nav, and no pointer cursor on the logout <button>. */
+.nav-link {
+  color: inherit;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
 }
 
 .wire-main a {
@@ -143,7 +178,7 @@ body {
 
 .wire-stale {
   font-size: 0.75rem;
-  opacity: 0.72;
+  opacity: var(--opacity-floor);
   margin-bottom: 1rem;
 }
 
@@ -159,7 +194,7 @@ body {
 
 .wire-empty-s {
   font-size: 0.9rem;
-  opacity: 0.72;
+  opacity: var(--opacity-floor);
 }
 
 /* The clock rail: fixed on the right, "now" in signal, then ticks back
@@ -219,7 +254,10 @@ body {
     display: none;
   }
 
-  .wire-page {
+  /* The rail is hidden here, so nothing needs clearing. Applied to the shared
+     shell rather than .wire-page alone, or the nav keeps a gutter for a rail
+     that is no longer on screen. */
+  .page-shell {
     padding-right: 1.5rem;
   }
 }

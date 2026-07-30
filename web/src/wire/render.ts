@@ -9,7 +9,7 @@
 
 import { escapeHtml, safeUrl } from "../lib/html";
 import { relativeTime } from "../lib/time";
-import { rampFor, freshness } from "./ramp";
+import { rampFor, freshness, type Ramp } from "./ramp";
 
 export interface Story {
   id: number;
@@ -95,11 +95,7 @@ function unavailableMarkup(): string {
   `;
 }
 
-function applyRamp(
-  head: HTMLElement,
-  r: ReturnType<typeof rampFor>,
-  withSize: boolean
-): void {
+function applyRamp(head: HTMLElement, r: Ramp, withSize: boolean): void {
   if (withSize) head.style.setProperty("--size", String(r.size));
   head.style.setProperty("--wdth", String(r.wdth));
   head.style.setProperty("--wght", String(r.wght));

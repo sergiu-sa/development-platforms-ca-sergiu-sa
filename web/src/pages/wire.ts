@@ -41,7 +41,7 @@ async function loadWire(): Promise<void> {
   renderWire(container, response, now);
 }
 
-export function initWire(): void {
+function initWire(): void {
   updateNavigation();
   loadWire();
 }

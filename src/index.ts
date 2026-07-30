@@ -27,10 +27,6 @@ try {
 
 const PORT = config.port;
 
-// One process serves both halves locally. serveStatic is registered after the
-// API so it cannot shadow it, and the explicit "/" handler stays last because
-// serveStatic calls next() when it finds no file - that is what lets the index
-// page resolve.
 const server = new Hono();
 
 // Local development only: never let the browser store these responses.
@@ -63,13 +59,21 @@ if (config.webDevServer) {
   // real thing on another port. That happened - port 3000 was serving a
   // sixteen-hour-old page that looked entirely plausible. Redirect instead, so
   // there is exactly one URL showing the current frontend.
-  server.get("*", (c) =>
-    c.req.path.startsWith("/api")
-      ? c.notFound()
-      : c.redirect(`${config.webDevServer}${c.req.path}`, 302)
-  );
+  server.get("*", (c) => {
+    if (c.req.path.startsWith("/api")) return c.notFound();
+
+    // Carry the query string across. c.req.path drops it, which silently broke
+    // the one flow most likely to send you here: /login.html?expired=1&next=/x
+    // arrived as /login.html with both parameters gone.
+    const { search } = new URL(c.req.url);
+    return c.redirect(`${config.webDevServer}${c.req.path}${search}`, 302);
+  });
 } else {
   // `npm start`: no Vite, so this process serves the build it was given.
+  //
+  // serveStatic is registered after the API so it cannot shadow it, and the
+  // explicit "/" handler stays last because serveStatic calls next() when it
+  // finds no file - that is what lets the index page resolve.
   server.use("/*", serveStatic({ root: "./dist/web" }));
   server.get("/", serveStatic({ path: "./dist/web/index.html" }));
 }

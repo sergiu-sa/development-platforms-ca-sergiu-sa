@@ -21,7 +21,7 @@
     "hono",
     "api",
     "typescript",
-    "mysql"
+    "postgres"
   ],
   "author": "",
   "license": "ISC",
