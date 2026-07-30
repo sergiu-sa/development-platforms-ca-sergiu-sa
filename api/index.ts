@@ -5,8 +5,9 @@
  * first request happens here instead. The app itself is shared with local
  * development and with the test suite - only the way it gets served differs.
  *
- * The frontend is not served from here. Vercel's CDN serves public/ directly,
- * which is also what gives static assets real Cache-Control headers.
+ * The frontend is not served from here. Vercel's CDN serves dist/web
+ * directly, which is also what gives static assets real Cache-Control
+ * headers.
  */
 
 import { handle } from "hono/vercel";

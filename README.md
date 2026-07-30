@@ -100,12 +100,16 @@ Neon Postgres is the next step.
 ## Scripts
 
 ```bash
-npm run dev          # watch mode
-npm run build        # compile to dist/
-npm start            # run the build
+npm run dev          # API on :3000 and Vite on :5173 (open :5173)
+npm run dev:api      # API only
+npm run dev:web      # frontend only
+npm run build        # builds both: dist/server and dist/web
+npm run build:server # tsc  -> dist/server
+npm run build:web    # vite -> dist/web
+npm start            # run the built server (serves dist/web)
 npm test             # run the test suite
 npm run test:watch   # tests in watch mode
-npm run typecheck    # typecheck src and tests
+npm run typecheck    # typecheck src, api, tests and web
 npm run format       # apply Prettier
 npm run format:check # verify formatting
 ```
@@ -172,9 +176,6 @@ Three constraints carry guarantees, each covered by tests in
 - `LOWER()` unique indexes on `users.email` and `users.username` — Postgres
   compares case-sensitively, unlike the MySQL collation this replaced
 
-`database-schema.sql` and `database-export.sql` are MySQL artefacts retained
-from the course submission. They are no longer used.
-
 ## Testing
 
 ```bash
@@ -190,50 +191,35 @@ which is what stops a missing config from wiping your development data.
 
 ```txt
 ├── db/
-│   ├── schema.sql               # Postgres schema - single source of truth
-│   └── migrations/              # Historical MySQL migrations
-├── database-schema.sql          # Retained MySQL artefact from the course
-├── database-export.sql          # Retained MySQL export for grading
+│   └── schema.sql               # Postgres schema - single source of truth
 ├── package.json
-├── tsconfig.json                # Build config (src only)
-├── tsconfig.check.json          # Typecheck config (src + tests)
+├── tsconfig.json                # Build config (src -> dist/server)
+├── tsconfig.check.json          # Typecheck config (src + api + tests)
+├── tsconfig.web.json            # Typecheck config (web/, DOM libs)
+├── vite.config.ts               # Vite root is web/, output dist/web
 ├── vitest.config.ts
 │
 ├── src/                         # Backend (TypeScript)
 │   ├── app.ts                   # Builds the Hono app, does not listen
-│   ├── index.ts                 # Validates env, starts the server
-│   ├── config/
-│   │   └── env.ts               # The only file that reads process.env
-│   ├── db/
-│   │   └── connection.ts        # Postgres connection pool
-│   ├── middleware/
-│   │   └── auth.ts              # JWT authentication
-│   └── modules/
-│       └── auth/
-│           ├── auth.route.ts    # Login & register endpoints
-│           └── auth.schema.ts   # Validation schemas
+│   ├── index.ts                 # Local entry: env, static or dev redirect
+│   ├── config/env.ts            # The only file that reads process.env
+│   ├── db/connection.ts         # Postgres connection pool
+│   ├── middleware/              # JWT auth, rate limiting
+│   └── modules/                 # auth/ and wire/ (route + schema + service)
 │
-├── tests/
-│   ├── auth.test.ts             # Registration, login, validation
-│   ├── schema.test.ts           # Database constraint behaviour
-│   └── helpers/
-│       ├── db.ts                # Schema setup, reset, _test safety rail
-│       └── request.ts           # Drives app.fetch() without a server
+├── api/index.ts                 # Vercel entry, exported per HTTP method
 │
-└── public/                      # Frontend (served as static files)
-    ├── index.html               # Home page - feed pending rebuild
-    ├── login.html               # Login form
-    ├── register.html            # Registration form
-    ├── create.html              # Legacy, pending rebuild
-    ├── css/
-    │   └── styles.css
-    └── js/
-        ├── api.js               # API request helper
-        ├── auth.js              # Token management
-        ├── articles.js          # Feed rendering
-        ├── login.js             # Login form handler
-        ├── register.js          # Register form handler
-        └── create.js            # Legacy, pending rebuild
+├── tests/                       # Backend suite, real Postgres
+│
+└── web/                         # Frontend (Vite + TypeScript + Tailwind v4)
+    ├── index.html               # The wire
+    ├── login.html
+    ├── register.html
+    └── src/
+        ├── lib/                 # api, auth, html, time (+ tests)
+        ├── wire/                # ramp (decay maths), render (DOM)
+        ├── pages/               # one thin entry per page
+        └── styles/app.css       # @theme tokens, self-hosted fonts
 ```
 
 ## Motivation

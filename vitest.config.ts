@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["tests/**/*.test.ts"],
+    include: ["tests/**/*.test.ts", "web/src/**/*.test.ts"],
 
     // NODE_ENV=test makes src/config/env.ts load .env.test instead of .env.
     // Set explicitly rather than relying on Vitest's default.

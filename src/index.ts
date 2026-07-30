@@ -3,7 +3,7 @@
  *
  * Validates the environment, wraps the API in a server that also serves the
  * frontend, and listens. Vercel never runs this file - it calls api/index.ts
- * instead, and serves public/ from its CDN. That split is why static file
+ * instead, and serves dist/web from its CDN. That split is why static file
  * serving lives here rather than in app.ts.
  */
 
@@ -27,10 +27,6 @@ try {
 
 const PORT = config.port;
 
-// One process serves both halves locally. serveStatic is registered after the
-// API so it cannot shadow it, and the explicit "/" handler stays last because
-// serveStatic calls next() when it finds no file - that is what lets the index
-// page resolve.
 const server = new Hono();
 
 // Local development only: never let the browser store these responses.
@@ -43,8 +39,8 @@ const server = new Hono();
 //      rather than an honest error. Measured: navigation type "back_forward",
 //      zero bytes transferred, no requests made. The site looked alive while
 //      nothing was running.
-//   2. Editing a file in public/ kept serving the previous version until a
-//      hard reload, which surfaces as a baffling "does not provide an export
+//   2. Editing a file in web/ kept serving the previous build until a hard
+//      reload, which surfaces as a baffling "does not provide an export
 //      named X" when a stale ES module meets a fresh one.
 //
 // Production is unaffected: Vercel's CDN sets its own caching headers and
@@ -55,8 +51,32 @@ server.use("*", async (c, next) => {
 });
 
 server.route("/", app);
-server.use("/*", serveStatic({ root: "./public" }));
-server.get("/", serveStatic({ path: "./public/index.html" }));
+
+if (config.webDevServer) {
+  // `npm run dev` starts Vite next to this process, and Vite owns the frontend.
+  // Serving dist/web from here as well is worse than useless: this port answers
+  // 200 with the last *build*, which can be hours old, while Vite serves the
+  // real thing on another port. That happened - port 3000 was serving a
+  // sixteen-hour-old page that looked entirely plausible. Redirect instead, so
+  // there is exactly one URL showing the current frontend.
+  server.get("*", (c) => {
+    if (c.req.path.startsWith("/api")) return c.notFound();
+
+    // Carry the query string across. c.req.path drops it, which silently broke
+    // the one flow most likely to send you here: /login.html?expired=1&next=/x
+    // arrived as /login.html with both parameters gone.
+    const { search } = new URL(c.req.url);
+    return c.redirect(`${config.webDevServer}${c.req.path}${search}`, 302);
+  });
+} else {
+  // `npm start`: no Vite, so this process serves the build it was given.
+  //
+  // serveStatic is registered after the API so it cannot shadow it, and the
+  // explicit "/" handler stays last because serveStatic calls next() when it
+  // finds no file - that is what lets the index page resolve.
+  server.use("/*", serveStatic({ root: "./dist/web" }));
+  server.get("/", serveStatic({ path: "./dist/web/index.html" }));
+}
 
 console.log("🚀 Starting News API server...");
 console.log(`📍 Server will run on: http://localhost:${PORT}`);
@@ -75,9 +95,15 @@ serve({
 
 console.log(`✅ Server is running on http://localhost:${PORT}`);
 console.log("\n📝 Available endpoints:");
-console.log(
-  `   GET  http://localhost:${PORT}/              - Home page (frontend)`
-);
+if (config.webDevServer) {
+  console.log(`   ⚠️  The frontend is NOT on this port in development.`);
+  console.log(`   👉 Open ${config.webDevServer} - Vite serves it with HMR.`);
+  console.log(`      http://localhost:${PORT}/ redirects there.`);
+} else {
+  console.log(
+    `   GET  http://localhost:${PORT}/              - Home page (built frontend)`
+  );
+}
 console.log(
   `   GET  http://localhost:${PORT}/api/health        - Database health check`
 );

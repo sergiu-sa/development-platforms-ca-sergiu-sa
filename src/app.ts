@@ -18,10 +18,14 @@ const app = new Hono();
 // Security headers on everything, API and static files alike. Registered first
 // so it wraps every later handler.
 //
-// The CSP is written against what the current pages actually load. Two entries
-// exist only because Tailwind ships from a CDN and compiles in the browser:
-// the cdn.tailwindcss.com script source, and 'unsafe-eval' for its JIT. The
-// Vite rebuild removes both, at which point this should tighten to 'self'.
+// The CSP is written against what the current pages actually load. Tailwind
+// is now a real build step (Vite + @tailwindcss/vite) rather than a CDN
+// script that compiles in the browser, so script-src needs neither the CDN
+// origin nor 'unsafe-eval'. Fonts are self-hosted via @fontsource-variable,
+// bundled as same-origin files, so font-src no longer needs data:.
+// 'unsafe-inline' stays on style-src: the decay ramp sets per-story values
+// through inline style attributes, which is unrelated to where the
+// stylesheet itself comes from.
 //
 // img-src carries media.guim.co.uk because wire thumbnails are hotlinked from
 // the Guardian rather than proxied.
@@ -30,11 +34,11 @@ app.use(
   secureHeaders({
     contentSecurityPolicy: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://cdn.tailwindcss.com", "'unsafe-eval'"],
+      scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "https://media.guim.co.uk", "data:"],
       connectSrc: ["'self'"],
-      fontSrc: ["'self'", "data:"],
+      fontSrc: ["'self'"],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],

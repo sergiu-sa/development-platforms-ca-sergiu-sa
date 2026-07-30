@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Lede</title>
+  </head>
+  <body class="min-h-screen bg-paper text-ink">
+    <nav class="border-b border-ink/10">
+      <div class="page-shell py-4 flex justify-between items-center">
+        <a href="/index.html" class="font-bold tracking-tight">Lede</a>
+        <div class="flex items-center gap-4 text-sm">
+          <a href="/index.html" class="nav-link">Home</a>
+          <a href="/login.html" id="nav-login" class="nav-link">Login</a>
+          <a href="/register.html" id="nav-register" class="nav-link"
+            >Register</a
+          >
+          <span
+            id="nav-user-email"
+            class="text-ink/72"
+            style="display: none"
+          ></span>
+          <button id="nav-logout" class="nav-link" style="display: none">
+            Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="auth-page">
+      <h1 class="auth-h">Sign in</h1>
+
+      <form id="login-form" class="auth-form">
+        <div>
+          <label for="email" class="auth-label">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            autocomplete="email"
+            class="auth-input"
+            placeholder="you@example.com"
+          />
+        </div>
+
+        <div>
+          <label for="password" class="auth-label">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            autocomplete="current-password"
+            class="auth-input"
+            placeholder="Password"
+          />
+        </div>
+
+        <p id="error-message" class="auth-error hidden" role="alert"></p>
+
+        <button type="submit" class="auth-submit">Sign in</button>
+      </form>
+
+      <p class="auth-foot">
+        No account?
+        <a href="/register.html" class="nav-link">Register</a>
+      </p>
+    </main>
+
+    <script type="module" src="/src/pages/login.ts"></script>
+  </body>
+</html>
