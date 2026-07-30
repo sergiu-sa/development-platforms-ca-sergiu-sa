@@ -107,10 +107,65 @@ function literalOpacityDeclarations(): { selector: string; value: number }[] {
   return found;
 }
 
+/**
+ * Tailwind alpha utilities written directly in markup, e.g. `text-ink/72`.
+ *
+ * This is the third channel the floor can leak through, and until now it was
+ * the unguarded one. The other two - OPACITY_MIN in ramp.ts and literal
+ * `opacity:` declarations in app.css - are covered above. A `text-ink/40` in
+ * an HTML file would have shipped silently, because it never touches either.
+ *
+ * Deliberately measures the composited contrast rather than just asserting the
+ * alpha is >= OPACITY_MIN. A pale token at a high alpha can still fail, and it
+ * is the ratio that the requirement is actually about.
+ */
+function alphaUtilities(): { file: string; token: string; alpha: number }[] {
+  const found: { file: string; token: string; alpha: number }[] = [];
+
+  for (const file of ["index.html", "login.html", "register.html"]) {
+    const markup = readFileSync(
+      fileURLToPath(new URL(`../../${file}`, import.meta.url)),
+      "utf-8"
+    );
+    for (const m of markup.matchAll(/\btext-([a-z][\w-]*)\/(\d{1,3})\b/g)) {
+      found.push({ file, token: m[1], alpha: Number(m[2]) / 100 });
+    }
+  }
+
+  return found;
+}
+
 describe("contrast floor", () => {
   const paper = hexToRgb(paperHex);
   const ink = hexToRgb(inkHex);
   const signal = hexToRgb(signalHex);
+
+  it("keeps every Tailwind alpha utility in the markup at AA contrast", () => {
+    const offenders = alphaUtilities()
+      .map((u) => {
+        // Tokens are declared as --color-<name>; anything else is not ours to
+        // resolve, and a silent skip would be the failure this test exists to
+        // prevent, so an unknown token is reported rather than ignored.
+        let ratio: number;
+        try {
+          const fg = hexToRgb(extractColor(u.token));
+          ratio = contrastRatio(compositeOver(fg, paper, u.alpha), paper);
+        } catch {
+          return `${u.file}: text-${u.token}/${u.alpha * 100} — no --color-${u.token} token to measure against`;
+        }
+        return ratio >= 4.5
+          ? null
+          : `${u.file}: text-${u.token}/${u.alpha * 100} → ${ratio.toFixed(2)}:1`;
+      })
+      .filter((x): x is string => x !== null);
+
+    expect(
+      offenders,
+      "These Tailwind alpha utilities fall below 4.5:1 against paper. " +
+        "Use an alpha at or above the --opacity-floor:\n" +
+        offenders.join("\n")
+    ).toEqual([]);
+  });
 
   // The stylesheet and the ramp each carry the floor. If they drift, one of
   // them is silently wrong and nothing else would notice.
