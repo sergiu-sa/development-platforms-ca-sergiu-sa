@@ -3,7 +3,7 @@
  *
  * Validates the environment, wraps the API in a server that also serves the
  * frontend, and listens. Vercel never runs this file - it calls api/index.ts
- * instead, and serves public/ from its CDN. That split is why static file
+ * instead, and serves dist/web from its CDN. That split is why static file
  * serving lives here rather than in app.ts.
  */
 
@@ -43,8 +43,8 @@ const server = new Hono();
 //      rather than an honest error. Measured: navigation type "back_forward",
 //      zero bytes transferred, no requests made. The site looked alive while
 //      nothing was running.
-//   2. Editing a file in public/ kept serving the previous version until a
-//      hard reload, which surfaces as a baffling "does not provide an export
+//   2. Editing a file in web/ kept serving the previous build until a hard
+//      reload, which surfaces as a baffling "does not provide an export
 //      named X" when a stale ES module meets a fresh one.
 //
 // Production is unaffected: Vercel's CDN sets its own caching headers and

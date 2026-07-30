@@ -232,3 +232,109 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---- auth pages: login and register ----
+   Quiet and typographic, not a showpiece: a single narrow column on paper,
+   Archivo throughout (Fraunces is reserved for curator-written words - see
+   app.css above - so it never appears on UI chrome like a form). */
+
+.auth-page {
+  max-width: 26rem;
+  margin: 0 auto;
+  padding: 4rem 1.5rem 6rem;
+}
+
+.auth-h {
+  font-family: var(--font-wire);
+  font-size: 1.75rem;
+  font-variation-settings:
+    "wdth" 100,
+    "wght" 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 2rem;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.auth-label {
+  display: block;
+  font-size: 0.75rem;
+  font-variation-settings:
+    "wdth" 90,
+    "wght" 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: var(--opacity-floor);
+  margin-bottom: 0.4rem;
+}
+
+.auth-input {
+  display: block;
+  width: 100%;
+  background: var(--color-clipping);
+  border: 1px solid rgb(20 19 16 / 0.16);
+  padding: 0.65rem 0.75rem;
+  font-family: var(--font-wire);
+  font-size: 0.95rem;
+  color: var(--color-ink);
+}
+
+.auth-input:focus {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 1px;
+}
+
+.auth-hint {
+  font-size: 0.75rem;
+  opacity: var(--opacity-floor);
+  margin-top: 0.4rem;
+}
+
+/* Errors use --signal at full strength - the only colour on this site
+   reserved for things that are live or chosen, and the one this form needs
+   to speak with. */
+.auth-error {
+  font-size: 0.85rem;
+  font-variation-settings:
+    "wdth" 100,
+    "wght" 600;
+  color: var(--color-signal);
+}
+
+.auth-success {
+  font-size: 0.85rem;
+  font-variation-settings:
+    "wdth" 100,
+    "wght" 600;
+}
+
+.auth-submit {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-wire);
+  font-size: 0.85rem;
+  font-variation-settings:
+    "wdth" 100,
+    "wght" 700;
+  letter-spacing: 0.02em;
+  border: none;
+  cursor: pointer;
+}
+
+.auth-submit:disabled {
+  opacity: var(--opacity-floor);
+  cursor: default;
+}
+
+.auth-foot {
+  margin-top: 2rem;
+  font-size: 0.85rem;
+  opacity: var(--opacity-floor);
+}
