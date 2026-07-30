@@ -55,8 +55,24 @@ server.use("*", async (c, next) => {
 });
 
 server.route("/", app);
-server.use("/*", serveStatic({ root: "./dist/web" }));
-server.get("/", serveStatic({ path: "./dist/web/index.html" }));
+
+if (config.webDevServer) {
+  // `npm run dev` starts Vite next to this process, and Vite owns the frontend.
+  // Serving dist/web from here as well is worse than useless: this port answers
+  // 200 with the last *build*, which can be hours old, while Vite serves the
+  // real thing on another port. That happened - port 3000 was serving a
+  // sixteen-hour-old page that looked entirely plausible. Redirect instead, so
+  // there is exactly one URL showing the current frontend.
+  server.get("*", (c) =>
+    c.req.path.startsWith("/api")
+      ? c.notFound()
+      : c.redirect(`${config.webDevServer}${c.req.path}`, 302)
+  );
+} else {
+  // `npm start`: no Vite, so this process serves the build it was given.
+  server.use("/*", serveStatic({ root: "./dist/web" }));
+  server.get("/", serveStatic({ path: "./dist/web/index.html" }));
+}
 
 console.log("🚀 Starting News API server...");
 console.log(`📍 Server will run on: http://localhost:${PORT}`);
@@ -75,9 +91,15 @@ serve({
 
 console.log(`✅ Server is running on http://localhost:${PORT}`);
 console.log("\n📝 Available endpoints:");
-console.log(
-  `   GET  http://localhost:${PORT}/              - Home page (frontend)`
-);
+if (config.webDevServer) {
+  console.log(`   ⚠️  The frontend is NOT on this port in development.`);
+  console.log(`   👉 Open ${config.webDevServer} - Vite serves it with HMR.`);
+  console.log(`      http://localhost:${PORT}/ redirects there.`);
+} else {
+  console.log(
+    `   GET  http://localhost:${PORT}/              - Home page (built frontend)`
+  );
+}
 console.log(
   `   GET  http://localhost:${PORT}/api/health        - Database health check`
 );

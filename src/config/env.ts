@@ -65,6 +65,11 @@ function numberFromEnv(name: string, fallback: number): number {
 
 export const config = {
   port: Number(process.env.PORT) || 3000,
+  // Set by `npm run dev:api` only. When present, Vite is running alongside this
+  // process and owns the frontend, so this server must not also serve the last
+  // build from dist/web - see the redirect in src/index.ts for why that
+  // combination is actively harmful rather than merely redundant.
+  webDevServer: process.env.WEB_DEV_SERVER || "",
   databaseUrl: process.env.DATABASE_URL || "",
   jwtSecret: process.env.JWT_SECRET || "",
   allowedOrigins: parseAllowedOrigins(),
