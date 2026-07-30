@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lede - The Wire</title>
   </head>
-  <body class="min-h-screen flex flex-col">
+  <body class="min-h-screen bg-paper text-ink">
     <!-- Navigation -->
-    <nav class="bg-white shadow-md">
+    <nav class="border-b border-ink/10">
       <div
-        class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center"
+        class="max-w-3xl mx-auto px-6 py-4 flex justify-between items-center"
       >
-        <a href="/index.html" class="text-xl font-bold text-blue-600"> Lede </a>
-        <div class="flex items-center gap-4">
+        <a href="/index.html" class="font-bold tracking-tight">Lede</a>
+        <div class="flex items-center gap-4 text-sm">
           <a href="/index.html" class="nav-link">Home</a>
           <a href="/login.html" id="nav-login" class="nav-link">Login</a>
           <a href="/register.html" id="nav-register" class="nav-link"
@@ -20,39 +20,26 @@
           >
           <span
             id="nav-user-email"
-            class="text-gray-600 text-sm"
+            class="text-ink/72"
             style="display: none"
           ></span>
-          <button
-            id="nav-logout"
-            class="btn-secondary text-sm"
-            style="display: none"
-          >
+          <button id="nav-logout" class="nav-link" style="display: none">
             Logout
           </button>
         </div>
       </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="flex-1 max-w-6xl mx-auto px-4 py-8 w-full">
-      <div class="flex items-baseline justify-between mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">The Wire</h1>
-        <p id="wire-status" class="text-sm text-gray-500"></p>
-      </div>
-      <div id="wire-container" class="grid gap-6">
-        <p class="text-gray-500">Loading the wire...</p>
-      </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-white border-t mt-auto">
-      <div
-        class="max-w-6xl mx-auto px-4 py-4 text-center text-gray-500 text-sm"
-      >
-        Lede &copy; 2026
-      </div>
-    </footer>
+    <!-- The wire: a continuous typographic decay field, not a list of
+         cards. The newest story is huge; each story down the page is
+         smaller, narrower and lighter. Scrolling down is scrolling
+         backwards through the day. -->
+    <div class="wire-page">
+      <aside id="wire-rail" class="wire-rail" aria-hidden="true"></aside>
+      <main id="wire-container" class="wire-main">
+        <p class="text-sm text-ink/72">Loading the wire...</p>
+      </main>
+    </div>
 
     <script type="module" src="/src/pages/wire.ts"></script>
   </body>

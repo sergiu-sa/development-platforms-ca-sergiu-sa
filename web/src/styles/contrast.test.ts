@@ -66,10 +66,70 @@ function compositeOver(fg: Rgb, bg: Rgb, alpha: number): Rgb {
   };
 }
 
+function extractOpacityFloor(): number {
+  const match = css.match(/--opacity-floor:\s*([\d.]+)\s*;/);
+  if (!match) {
+    throw new Error(
+      "app.css is missing the --opacity-floor custom property - the " +
+        "contrast test cannot verify a floor that no longer exists."
+    );
+  }
+  return Number(match[1]);
+}
+
+/**
+ * Every literal `opacity: <number>` in the stylesheet, with the selector it
+ * belongs to.
+ *
+ * This exists because the two named-token tests below did NOT catch a real
+ * defect: .wire-tick shipped at opacity 0.55, which composites to 3.92:1 and
+ * fails AA. Checking two tokens proves nothing about the other declarations.
+ *
+ * Values written as var(--opacity) or var(--opacity-floor) are skipped: the
+ * first is the ramp's own output, already covered by ramp.test.ts, and the
+ * second is the floor itself.
+ */
+function literalOpacityDeclarations(): { selector: string; value: number }[] {
+  const found: { selector: string; value: number }[] = [];
+  const pattern = /opacity:\s*([\d.]+)\s*;/g;
+
+  for (const match of css.matchAll(pattern)) {
+    const before = css.slice(0, match.index);
+    const braceAt = before.lastIndexOf("{");
+    const selector = before
+      .slice(before.lastIndexOf("}", braceAt) + 1, braceAt)
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .trim()
+      .replace(/\s+/g, " ");
+    found.push({ selector, value: Number(match[1]) });
+  }
+
+  return found;
+}
+
 describe("contrast floor", () => {
   const paper = hexToRgb(paperHex);
   const ink = hexToRgb(inkHex);
   const signal = hexToRgb(signalHex);
+
+  // The stylesheet and the ramp each carry the floor. If they drift, one of
+  // them is silently wrong and nothing else would notice.
+  it("keeps --opacity-floor in app.css equal to OPACITY_MIN in ramp.ts", () => {
+    expect(extractOpacityFloor()).toBe(OPACITY_MIN);
+  });
+
+  it("never lets a literal opacity in app.css fall below the floor", () => {
+    const offenders = literalOpacityDeclarations()
+      .filter((d) => d.value < OPACITY_MIN)
+      .map((d) => `${d.selector} { opacity: ${d.value} }`);
+
+    expect(
+      offenders,
+      `These rules set a text opacity below the ${OPACITY_MIN} accessibility ` +
+        "floor. Use var(--opacity-floor), or raise the value:\n" +
+        offenders.join("\n")
+    ).toEqual([]);
+  });
 
   it("keeps the faintest ink (OPACITY_MIN over paper) at AA contrast", () => {
     const faded = compositeOver(ink, paper, OPACITY_MIN);

@@ -1,5 +1,5 @@
-import { register } from "./api";
-import { isLoggedIn, updateNavigation } from "./auth";
+import { register } from "./lib/api";
+import { isLoggedIn, updateNavigation } from "./lib/auth";
 
 export function initRegister() {
   updateNavigation();

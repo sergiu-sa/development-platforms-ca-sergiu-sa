@@ -1,5 +1,5 @@
-import { login } from "./api";
-import { setToken, isLoggedIn, updateNavigation } from "./auth";
+import { login } from "./lib/api";
+import { setToken, isLoggedIn, updateNavigation } from "./lib/auth";
 
 export function initLogin() {
   updateNavigation();

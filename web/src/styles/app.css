@@ -17,9 +17,22 @@
 
   --font-wire: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
   --font-voice: "Fraunces Variable", ui-serif, Georgia, serif;
+
+  /* The accessibility floor, and the lowest opacity any text on this site is
+     allowed to use. Ink at 0.72 over paper measures 6.85:1; at 0.55 it is
+     3.92:1 and fails WCAG AA. This MUST stay equal to OPACITY_MIN in
+     wire/ramp.ts - contrast.test.ts asserts the two are identical, so the
+     stylesheet and the ramp cannot drift apart. */
+  --opacity-floor: 0.72;
 }
 
 body {
+  /* How awake the wire is, 1 (just published) to 0 (nothing for 12h+). Set
+     from render.ts on every render. Never multiplied into text opacity -
+     that breaks the contrast floor (see ramp.ts). It drives only the signal
+     colour's saturation and the hairline rule alpha below, so a stale wire
+     looks asleep while every character keeps its measured contrast. */
+  --freshness: 1;
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-wire);
@@ -36,6 +49,179 @@ body {
   opacity: var(--opacity);
   line-height: 0.98;
   letter-spacing: -0.035em;
+}
+
+/* ---- the wire page shell ---- */
+
+/* The measure is deliberately wide. At 74px, Archivo Expanded needs room: in
+   a 664px column the lead headline wrapped to six lines and left a dead flank
+   between the text and the clock rail. 84rem caps it on very large monitors
+   while filling a typical laptop, where the text measure lands near 1160px
+   and the lead falls to about three lines. The right padding clears the 4rem
+   rail so content runs up to it rather than stopping short. */
+.wire-page {
+  position: relative;
+  max-width: 84rem;
+  margin: 0 auto;
+  padding: 2rem 5.5rem 4rem 2rem;
+}
+
+.wire-main a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.wire-main a:hover {
+  text-decoration: underline;
+}
+
+/* A hairline between stories, and the rule above the tail. Alpha (not
+   opacity on text) is what freshness is allowed to touch, so a stale wire's
+   dividers fade toward the paper without a single character losing
+   contrast. */
+.wire-item {
+  padding: 0.9rem 0;
+  border-bottom: 1px solid rgb(20 19 16 / calc(0.04 + 0.14 * var(--freshness)));
+}
+
+.wire-item:first-child {
+  padding-top: 0;
+}
+
+/* Section label + inline relative time, above every headline. This is the
+   signal colour - the only thing freshness is allowed to desaturate. */
+.psec {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.6875rem;
+  font-variation-settings:
+    "wdth" 80,
+    "wght" 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-signal);
+  filter: saturate(var(--freshness));
+}
+
+.wire-img {
+  display: block;
+  width: 100%;
+  max-height: 22rem;
+  object-fit: cover;
+  margin-top: 0.75rem;
+}
+
+/* Ranks beyond ~12: small type in three columns, timestamp and headline
+   only. Weight and width keep following the ramp; size is fixed at the
+   11px floor rather than shrinking further (the ramp's own accessibility
+   rule - see ramp.ts). */
+.wire-tail {
+  columns: 3;
+  column-gap: 1.75rem;
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid rgb(20 19 16 / calc(0.04 + 0.14 * var(--freshness)));
+}
+
+.wire-tail-item {
+  break-inside: avoid;
+  font-size: 11px;
+  font-variation-settings:
+    "wdth" var(--wdth),
+    "wght" var(--wght);
+  opacity: var(--opacity);
+  line-height: 1.4;
+  margin-bottom: 0.6rem;
+}
+
+.wire-tail-item time {
+  font-variation-settings:
+    "wdth" var(--wdth),
+    "wght" 700;
+  margin-right: 0.35em;
+}
+
+.wire-stale {
+  font-size: 0.75rem;
+  opacity: 0.72;
+  margin-bottom: 1rem;
+}
+
+.wire-empty {
+  padding: 3rem 0;
+}
+
+.wire-empty-h {
+  font-family: var(--font-voice);
+  font-size: 1.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.wire-empty-s {
+  font-size: 0.9rem;
+  opacity: 0.72;
+}
+
+/* The clock rail: fixed on the right, "now" in signal, then ticks back
+   through the day - the scrubber that says where in the day you are. It is
+   aria-hidden because it is decorative context alongside the real per-story
+   <time> elements, never the only place a timestamp appears. */
+.wire-rail {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 4rem;
+  border-left: 1px solid rgb(20 19 16 / calc(0.04 + 0.14 * var(--freshness)));
+  pointer-events: none;
+}
+
+.wire-tick {
+  position: absolute;
+  left: 0;
+  padding-left: 0.6rem;
+  font-size: 0.625rem;
+  font-variation-settings:
+    "wdth" 78,
+    "wght" 500;
+  letter-spacing: 0.06em;
+  opacity: var(--opacity-floor);
+  white-space: nowrap;
+}
+
+.wire-tick::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 0.35em;
+  width: 0.4rem;
+  height: 1px;
+  background: rgb(20 19 16 / 0.35);
+}
+
+.wire-tick-now {
+  color: var(--color-signal);
+  filter: saturate(var(--freshness));
+  opacity: 1;
+  font-variation-settings:
+    "wdth" 88,
+    "wght" 700;
+}
+
+.wire-tick-now::before {
+  width: 0.7rem;
+  background: var(--color-signal);
+  filter: saturate(var(--freshness));
+}
+
+@media (max-width: 40rem) {
+  .wire-rail {
+    display: none;
+  }
+
+  .wire-page {
+    padding-right: 1.5rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
