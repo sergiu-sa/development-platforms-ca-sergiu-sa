@@ -1,13 +1,67 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { OPACITY_MIN } from "../wire/ramp";
 
-// The accessibility floor used to be enforced only by a comment next to
-// OPACITY_MIN in ramp.ts. This test makes it self-enforcing: a renamed
-// token or a moved value breaks a test rather than silently drifting.
+/**
+ * The accessibility floor, swept out of the stylesheet rather than trusted to a
+ * comment. Three things can breach it and each has its own check below: a token
+ * that is simply too pale, an opacity that composites below AA, and a font-size
+ * under the readable minimum.
+ *
+ * This used to also keep --opacity-floor in app.css equal to OPACITY_MIN in
+ * wire/ramp.ts. The ramp is deleted, so the floor now lives in exactly one
+ * place - this file - and that test guarded nothing worth keeping.
+ */
 const cssPath = fileURLToPath(new URL("./app.css", import.meta.url));
 const css = readFileSync(cssPath, "utf-8");
+
+/**
+ * Every page's markup, read once. Two checks below sweep these files, and the
+ * list is the only place the set of pages is written - a fourth page added to
+ * one check but not the other would be checked half as well, silently.
+ */
+const MARKUP_FILES = ["index.html", "login.html", "register.html"].map(
+  (file) => ({
+    file,
+    markup: readFileSync(
+      fileURLToPath(new URL(`../../${file}`, import.meta.url)),
+      "utf-8"
+    ),
+  })
+);
+
+/** Ink at this opacity measures 7.37:1 on paper. Below it, AA starts to fail. */
+const OPACITY_FLOOR = 0.72;
+
+/** Nothing read as prose goes below this. */
+const PROSE_MIN_PX = 15;
+
+/** Nothing at all goes below this. */
+const ABSOLUTE_MIN_PX = 12;
+
+/**
+ * Selectors allowed to set a size between ABSOLUTE_MIN_PX and PROSE_MIN_PX.
+ * Furniture only - labels, slugs, timestamps, buttons, status. Adding to this
+ * list is the deliberate act the test exists to force.
+ */
+const FURNITURE_SELECTORS = [".m"];
+
+/**
+ * Keyframes allowed to animate opacity below the floor.
+ *
+ * `beat` is the live dot's pulse. It is a graphic, not text, and it is
+ * redundant with the word "Live" beside it, so dimming it costs a reader
+ * nothing - and prefers-reduced-motion stops it dead. Named rather than
+ * exempting @keyframes wholesale, because fading a block of text to 0.25 is a
+ * genuine failure and should still break this test.
+ */
+const PULSING_KEYFRAMES = ["beat"];
+
+interface Rgb {
+  r: number;
+  g: number;
+  b: number;
+}
 
 function extractColor(name: string): string {
   const pattern = new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})\\s*;`);
@@ -19,16 +73,6 @@ function extractColor(name: string): string {
     );
   }
   return match[1];
-}
-
-const paperHex = extractColor("paper");
-const inkHex = extractColor("ink");
-const signalHex = extractColor("signal");
-
-interface Rgb {
-  r: number;
-  g: number;
-  b: number;
 }
 
 function hexToRgb(hex: string): Rgb {
@@ -66,42 +110,91 @@ function compositeOver(fg: Rgb, bg: Rgb, alpha: number): Rgb {
   };
 }
 
-function extractOpacityFloor(): number {
-  const match = css.match(/--opacity-floor:\s*([\d.]+)\s*;/);
-  if (!match) {
-    throw new Error(
-      "app.css is missing the --opacity-floor custom property - the " +
-        "contrast test cannot verify a floor that no longer exists."
-    );
+/**
+ * Every @keyframes block's name and character range, found once. Braces are
+ * matched forward from each block's opening, so a nested rule cannot make a
+ * later declaration look as though it is still inside the animation.
+ */
+const KEYFRAME_RANGES = [...css.matchAll(/@keyframes\s+([\w-]+)\s*\{/g)].map(
+  (match) => {
+    let depth = 1;
+    let i = match.index + match[0].length;
+    while (i < css.length && depth > 0) {
+      if (css[i] === "{") depth++;
+      else if (css[i] === "}") depth--;
+      i++;
+    }
+    return { name: match[1], start: match.index, end: i };
   }
-  return Number(match[1]);
+);
+
+/** The name of the @keyframes block containing `index`, or null. */
+function keyframeAt(index: number): string | null {
+  const block = KEYFRAME_RANGES.find(
+    (range) => index > range.start && index < range.end
+  );
+  return block ? block.name : null;
+}
+
+/** The selector a declaration at `index` belongs to. */
+function selectorAt(index: number): string {
+  const before = css.slice(0, index);
+  const braceAt = before.lastIndexOf("{");
+  return before
+    .slice(before.lastIndexOf("}", braceAt) + 1, braceAt)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 /**
- * Every literal `opacity: <number>` in the stylesheet, with the selector it
- * belongs to.
+ * Every literal `opacity: <number>` in the stylesheet, with its selector.
  *
- * This exists because the two named-token tests below did NOT catch a real
- * defect: .wire-tick shipped at opacity 0.55, which composites to 3.92:1 and
- * fails AA. Checking two tokens proves nothing about the other declarations.
- *
- * Values written as var(--opacity) or var(--opacity-floor) are skipped: the
- * first is the ramp's own output, already covered by ramp.test.ts, and the
- * second is the floor itself.
+ * This exists because checking named tokens did NOT catch a real defect once:
+ * .wire-tick shipped at opacity 0.55, which composites to 3.92:1 and fails AA.
+ * Checking a token proves nothing about the other declarations.
  */
-function literalOpacityDeclarations(): { selector: string; value: number }[] {
-  const found: { selector: string; value: number }[] = [];
-  const pattern = /opacity:\s*([\d.]+)\s*;/g;
+function literalOpacityDeclarations(): {
+  selector: string;
+  value: number;
+  keyframe: string | null;
+}[] {
+  const found: {
+    selector: string;
+    value: number;
+    keyframe: string | null;
+  }[] = [];
 
-  for (const match of css.matchAll(pattern)) {
-    const before = css.slice(0, match.index);
-    const braceAt = before.lastIndexOf("{");
-    const selector = before
-      .slice(before.lastIndexOf("}", braceAt) + 1, braceAt)
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .trim()
-      .replace(/\s+/g, " ");
-    found.push({ selector, value: Number(match[1]) });
+  for (const match of css.matchAll(/opacity:\s*([\d.]+)\s*;/g)) {
+    found.push({
+      selector: selectorAt(match.index),
+      value: Number(match[1]),
+      keyframe: keyframeAt(match.index),
+    });
+  }
+
+  return found;
+}
+
+/** Every `font-size` in the stylesheet, in px, with its selector. */
+function fontSizeDeclarations(): { selector: string; px: number }[] {
+  const found: { selector: string; px: number }[] = [];
+
+  for (const match of css.matchAll(/font-size:\s*([^;]+);/g)) {
+    const raw = match[1].trim();
+
+    // clamp(min, preferred, max) is measured at its minimum: that is the size
+    // the smallest viewport actually renders, and the only one that can breach
+    // the floor.
+    const value = raw.startsWith("clamp(")
+      ? raw.slice("clamp(".length).split(",")[0].trim()
+      : raw;
+
+    const number = parseFloat(value);
+    if (Number.isNaN(number)) continue;
+
+    const px = value.endsWith("rem") ? number * 16 : number;
+    found.push({ selector: selectorAt(match.index), px });
   }
 
   return found;
@@ -110,23 +203,17 @@ function literalOpacityDeclarations(): { selector: string; value: number }[] {
 /**
  * Tailwind alpha utilities written directly in markup, e.g. `text-ink/72`.
  *
- * This is the third channel the floor can leak through, and until now it was
- * the unguarded one. The other two - OPACITY_MIN in ramp.ts and literal
- * `opacity:` declarations in app.css - are covered above. A `text-ink/40` in
- * an HTML file would have shipped silently, because it never touches either.
+ * This is the third channel the floor can leak through. A `text-ink/40` in an
+ * HTML file never touches app.css, so neither check above would see it.
  *
  * Deliberately measures the composited contrast rather than just asserting the
- * alpha is >= OPACITY_MIN. A pale token at a high alpha can still fail, and it
- * is the ratio that the requirement is actually about.
+ * alpha is >= the floor. A pale token at a high alpha can still fail, and it is
+ * the ratio the requirement is actually about.
  */
 function alphaUtilities(): { file: string; token: string; alpha: number }[] {
   const found: { file: string; token: string; alpha: number }[] = [];
 
-  for (const file of ["index.html", "login.html", "register.html"]) {
-    const markup = readFileSync(
-      fileURLToPath(new URL(`../../${file}`, import.meta.url)),
-      "utf-8"
-    );
+  for (const { file, markup } of MARKUP_FILES) {
     for (const m of markup.matchAll(/\btext-([a-z][\w-]*)\/(\d{1,3})\b/g)) {
       found.push({ file, token: m[1], alpha: Number(m[2]) / 100 });
     }
@@ -135,12 +222,119 @@ function alphaUtilities(): { file: string; token: string; alpha: number }[] {
   return found;
 }
 
-describe("contrast floor", () => {
-  const paper = hexToRgb(paperHex);
-  const ink = hexToRgb(inkHex);
-  const signal = hexToRgb(signalHex);
+const paper = hexToRgb(extractColor("paper"));
+const paper2 = hexToRgb(extractColor("paper-2"));
+const ink = hexToRgb(extractColor("ink"));
+const blue = hexToRgb(extractColor("blue"));
+const redInk = hexToRgb(extractColor("red-ink"));
 
-  it("keeps every Tailwind alpha utility in the markup at AA contrast", () => {
+describe("contrast floor", () => {
+  // Both grounds are tested because red text lands on the recessed band too -
+  // the stale notice and a hovered row - and paper-2 is the harder of the two.
+  // It is what decided the value of --color-red-ink.
+  const pairs: [string, Rgb, Rgb][] = [
+    ["ink on paper", ink, paper],
+    ["ink on paper-2", ink, paper2],
+    ["blue on paper", blue, paper],
+    ["blue on paper-2", blue, paper2],
+    ["paper on blue", paper, blue],
+    ["red-ink on paper", redInk, paper],
+    ["red-ink on paper-2", redInk, paper2],
+    ["paper on red-ink", paper, redInk],
+  ];
+
+  it.each(pairs)("keeps %s at AA contrast", (_name, fg, bg) => {
+    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("keeps .quiet ink at AA contrast on both grounds", () => {
+    for (const ground of [paper, paper2]) {
+      const faded = compositeOver(ink, ground, OPACITY_FLOOR);
+      expect(contrastRatio(faded, ground)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  /**
+   * --color-red measures 2.93:1 on paper. It fails AA for text and fails even
+   * the 3:1 non-text threshold, so it is only ever a filled mark that stands
+   * alone: the tick gauge's "now", a spindle thread. The moment it sets a glyph
+   * it is a contrast failure, and --color-red-ink exists for exactly that job.
+   *
+   * The negative lookahead is load-bearing: --color-red is a prefix of
+   * --color-red-ink, so matching var(--color-red without the closing paren
+   * would flag every correct use.
+   */
+  it("never sets a glyph in --color-red", () => {
+    const offenders: string[] = [];
+
+    for (const match of css.matchAll(/(?<!-)color:\s*([^;]+);/g)) {
+      if (/var\(--color-red\)/.test(match[1])) {
+        offenders.push(`${selectorAt(match.index)} { color: ${match[1]} }`);
+      }
+    }
+
+    expect(
+      offenders,
+      "--color-red is 2.93:1 on paper and must never set text. Use " +
+        "--color-red-ink for a red glyph:\n" +
+        offenders.join("\n")
+    ).toEqual([]);
+  });
+
+  it("never lets a literal opacity in app.css fall below the floor", () => {
+    const offenders = literalOpacityDeclarations()
+      // WCAG 1.4.3 exempts inactive controls from the contrast minimum, so a
+      // dimmed :disabled button is allowed below the floor. Every other
+      // selector is held to it.
+      .filter((d) => !d.selector.includes(":disabled"))
+      .filter((d) => !(d.keyframe && PULSING_KEYFRAMES.includes(d.keyframe)))
+      .filter((d) => d.value < OPACITY_FLOOR)
+      .map((d) =>
+        d.keyframe
+          ? `@keyframes ${d.keyframe} { opacity: ${d.value} }`
+          : `${d.selector} { opacity: ${d.value} }`
+      );
+
+    expect(
+      offenders,
+      `These rules set a text opacity below the ${OPACITY_FLOOR} floor. Use ` +
+        "the .quiet class, or raise the value:\n" +
+        offenders.join("\n")
+    ).toEqual([]);
+  });
+});
+
+describe("type floor", () => {
+  it("sets nothing at all below 12px", () => {
+    const offenders = fontSizeDeclarations()
+      .filter((d) => d.px < ABSOLUTE_MIN_PX)
+      .map((d) => `${d.selector} { font-size: ${d.px}px }`);
+
+    expect(
+      offenders,
+      `Nothing on this site goes below ${ABSOLUTE_MIN_PX}px:\n` +
+        offenders.join("\n")
+    ).toEqual([]);
+  });
+
+  it("sets nothing read as prose below 15px", () => {
+    const offenders = fontSizeDeclarations()
+      .filter((d) => d.px < PROSE_MIN_PX)
+      .filter((d) => !FURNITURE_SELECTORS.includes(d.selector))
+      .map((d) => `${d.selector} { font-size: ${d.px}px }`);
+
+    expect(
+      offenders,
+      `Only furniture may sit between ${ABSOLUTE_MIN_PX} and ${PROSE_MIN_PX}px. ` +
+        "If one of these really is a label rather than prose, add it to " +
+        "FURNITURE_SELECTORS deliberately:\n" +
+        offenders.join("\n")
+    ).toEqual([]);
+  });
+});
+
+describe("markup", () => {
+  it("keeps every Tailwind alpha utility at AA contrast", () => {
     const offenders = alphaUtilities()
       .map((u) => {
         // Tokens are declared as --color-<name>; anything else is not ours to
@@ -162,38 +356,26 @@ describe("contrast floor", () => {
     expect(
       offenders,
       "These Tailwind alpha utilities fall below 4.5:1 against paper. " +
-        "Use an alpha at or above the --opacity-floor:\n" +
+        "Use the .quiet class instead:\n" +
         offenders.join("\n")
     ).toEqual([]);
   });
 
-  // The stylesheet and the ramp each carry the floor. If they drift, one of
-  // them is silently wrong and nothing else would notice.
-  it("keeps --opacity-floor in app.css equal to OPACITY_MIN in ramp.ts", () => {
-    expect(extractOpacityFloor()).toBe(OPACITY_MIN);
-  });
+  it("has no inline style attributes, which style-src 'self' would block", () => {
+    const offenders: string[] = [];
 
-  it("never lets a literal opacity in app.css fall below the floor", () => {
-    const offenders = literalOpacityDeclarations()
-      .filter((d) => d.value < OPACITY_MIN)
-      .map((d) => `${d.selector} { opacity: ${d.value} }`);
+    for (const { file, markup } of MARKUP_FILES) {
+      for (const m of markup.matchAll(/\sstyle="[^"]*"/g)) {
+        offenders.push(`${file}:${m[0].trim()}`);
+      }
+    }
 
     expect(
       offenders,
-      `These rules set a text opacity below the ${OPACITY_MIN} accessibility ` +
-        "floor. Use var(--opacity-floor), or raise the value:\n" +
+      "style-src is 'self' with no 'unsafe-inline', so a style attribute in " +
+        "markup is dropped by the browser and the element renders unstyled. " +
+        "Use a class, or set the property through the CSSOM:\n" +
         offenders.join("\n")
     ).toEqual([]);
-  });
-
-  it("keeps the faintest ink (OPACITY_MIN over paper) at AA contrast", () => {
-    const faded = compositeOver(ink, paper, OPACITY_MIN);
-    const ratio = contrastRatio(faded, paper);
-    expect(ratio).toBeGreaterThanOrEqual(4.5);
-  });
-
-  it("keeps the signal colour at AA contrast against paper", () => {
-    const ratio = contrastRatio(signal, paper);
-    expect(ratio).toBeGreaterThanOrEqual(4.5);
   });
 });

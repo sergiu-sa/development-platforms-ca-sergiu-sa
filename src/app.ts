@@ -23,9 +23,13 @@ const app = new Hono();
 // script that compiles in the browser, so script-src needs neither the CDN
 // origin nor 'unsafe-eval'. Fonts are self-hosted via @fontsource-variable,
 // bundled as same-origin files, so font-src no longer needs data:.
-// 'unsafe-inline' stays on style-src: the decay ramp sets per-story values
-// through inline style attributes, which is unrelated to where the
-// stylesheet itself comes from.
+// 'unsafe-inline' has been removed from style-src. It was blamed on the decay
+// ramp, but that was never the real reason: setting a property through the
+// CSSOM (element.style.setProperty) is not subject to CSP at all. What actually
+// required it was style attributes parsed from markup - style="display:none" on
+// the nav elements, and the clock rail interpolating style="top:..." into an
+// innerHTML string. Both are gone, so the allowance is gone with them. Anything
+// that needs a dynamic value must go through the CSSOM, never setAttribute.
 //
 // img-src carries media.guim.co.uk because wire thumbnails are hotlinked from
 // the Guardian rather than proxied.
@@ -35,7 +39,7 @@ app.use(
     contentSecurityPolicy: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'"],
       imgSrc: ["'self'", "https://media.guim.co.uk", "data:"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'"],

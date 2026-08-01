@@ -5,24 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Register - Lede</title>
   </head>
-  <body class="min-h-screen bg-paper text-ink">
-    <nav class="border-b border-ink/10">
+  <body class="min-h-screen">
+    <nav class="border-b border-rule">
       <div class="page-shell py-4 flex justify-between items-center">
-        <a href="/index.html" class="font-bold tracking-tight">Lede</a>
-        <div class="flex items-center gap-4 text-sm">
+        <a href="/index.html" class="word">Lede<b>.</b></a>
+        <div class="m flex items-center gap-4">
           <a href="/index.html" class="nav-link">Home</a>
           <a href="/login.html" id="nav-login" class="nav-link">Login</a>
           <a href="/register.html" id="nav-register" class="nav-link"
             >Register</a
           >
-          <span
-            id="nav-user-email"
-            class="text-ink/72"
-            style="display: none"
-          ></span>
-          <button id="nav-logout" class="nav-link" style="display: none">
-            Logout
-          </button>
+          <span id="nav-user-email" class="quiet" hidden></span>
+          <button id="nav-logout" class="nav-link" hidden>Logout</button>
         </div>
       </div>
     </nav>
@@ -32,7 +26,7 @@
 
       <form id="register-form" class="auth-form">
         <div>
-          <label for="email" class="auth-label">Email</label>
+          <label for="email" class="auth-label m quiet">Email</label>
           <input
             type="email"
             id="email"
@@ -45,7 +39,7 @@
         </div>
 
         <div>
-          <label for="username" class="auth-label">Username</label>
+          <label for="username" class="auth-label m quiet">Username</label>
           <input
             type="text"
             id="username"
@@ -65,7 +59,7 @@
         </div>
 
         <div>
-          <label for="password" class="auth-label">Password</label>
+          <label for="password" class="auth-label m quiet">Password</label>
           <input
             type="password"
             id="password"
@@ -79,7 +73,7 @@
         </div>
 
         <div>
-          <label for="confirm-password" class="auth-label"
+          <label for="confirm-password" class="auth-label m quiet"
             >Confirm password</label
           >
           <input
@@ -97,7 +91,9 @@
         <p id="error-message" class="auth-error hidden" role="alert"></p>
         <p id="success-message" class="auth-success hidden"></p>
 
-        <button type="submit" class="auth-submit">Create account</button>
+        <button type="submit" class="btn btn-blue m self-start mt-2">
+          Create account
+        </button>
       </form>
 
       <p class="auth-foot">

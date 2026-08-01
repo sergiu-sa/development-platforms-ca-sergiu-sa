@@ -19,16 +19,13 @@ beforeEach(() => {
 });
 
 describe("renderWire", () => {
-  it("gives the first story the largest type", () => {
+  it("renders one item per story", () => {
     renderWire(el, {
       success: true,
       stale: false,
       stories: [story(), story({ id: 2 })],
     });
-    const heads = el.querySelectorAll<HTMLElement>(".wire-head");
-    const first = parseFloat(heads[0].style.getPropertyValue("--size"));
-    const second = parseFloat(heads[1].style.getPropertyValue("--size"));
-    expect(first).toBeGreaterThan(second);
+    expect(el.querySelectorAll(".wire-item").length).toBe(2);
   });
 
   it("escapes a headline containing markup", () => {
@@ -68,7 +65,7 @@ describe("renderWire", () => {
       fetchedAt: "2026-07-29T12:00:00.000Z",
       stories: [story()],
     });
-    expect(el.querySelectorAll(".wire-head").length).toBe(1);
+    expect(el.querySelectorAll(".wire-item").length).toBe(1);
     expect(el.textContent).not.toMatch(/error|unavailable/i);
     // Checking only for the absence of alarming words would still pass if the
     // stale branch were deleted outright, which is the regression that
@@ -80,7 +77,7 @@ describe("renderWire", () => {
 
   it("renders the unavailable state and no stories when the fetch fails", () => {
     renderWire(el, { success: false, stale: false, stories: [] });
-    expect(el.querySelectorAll(".wire-head").length).toBe(0);
+    expect(el.querySelectorAll(".wire-item").length).toBe(0);
     expect(el.querySelector(".wire-empty")).not.toBeNull();
     // The unavailable and empty states share .wire-empty wrapper classes, so
     // asserting the wrapper proves nothing about which one rendered. A branch
@@ -96,7 +93,7 @@ describe("renderWire", () => {
     expect(el.textContent).not.toContain("unavailable");
   });
 
-  it("always prints a timestamp, so decay is never the only signal", () => {
+  it("always prints a machine-readable timestamp", () => {
     renderWire(el, { success: true, stale: false, stories: [story()] });
     expect(el.querySelector("time")).not.toBeNull();
   });
