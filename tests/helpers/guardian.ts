@@ -26,18 +26,54 @@ export interface GuardianStub {
   setLatency: (ms: number) => void;
 }
 
+const defaultFields: Record<string, unknown> = {
+  headline: "Example story",
+  trailText: "A summary of the example story",
+  standfirst: "The standfirst of the example story",
+  byline: "Example Reporter in London",
+  wordcount: "820",
+  thumbnail: "https://media.guim.co.uk/example/crop/500.jpg",
+};
+
+/**
+ * A result in the shape the live API returns, including the tone tags and the
+ * image element the deck depends on. `fields` overrides are merged rather than
+ * replaced, so a test can change one field without dropping the rest - losing
+ * the thumbnail would silently drop the story from the wire.
+ */
 export function guardianResult(overrides: Record<string, unknown> = {}) {
+  const { fields, ...rest } = overrides as {
+    fields?: Record<string, unknown>;
+  };
+
   return {
     id: "world/2026/jul/28/example-story",
     webTitle: "Example story",
     webUrl: "https://www.theguardian.com/world/2026/jul/28/example-story",
     sectionName: "World",
+    pillarName: "News",
     webPublicationDate: "2026-07-28T12:00:00Z",
-    fields: {
-      trailText: "A summary of the example story",
-      thumbnail: "https://media.guim.co.uk/example/500.jpg",
-    },
-    ...overrides,
+    tags: [{ id: "tone/news", type: "tone", webTitle: "News" }],
+    elements: [
+      {
+        id: "main-image",
+        relation: "main",
+        type: "image",
+        assets: [
+          {
+            type: "image",
+            file: "https://media.guim.co.uk/example/crop/1000.jpg",
+            typeData: {
+              width: "1000",
+              altText: "A photograph illustrating the example story",
+              credit: "Photograph: Example Photographer/Reuters",
+            },
+          },
+        ],
+      },
+    ],
+    fields: { ...defaultFields, ...fields },
+    ...rest,
   };
 }
 

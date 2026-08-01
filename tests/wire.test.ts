@@ -60,8 +60,75 @@ describe("GET /api/wire", () => {
       summary: "A summary of the example story",
       section: "World",
       url: "https://www.theguardian.com/world/2026/jul/28/example-story",
-      thumbnailUrl: "https://media.guim.co.uk/example/500.jpg",
+      thumbnailUrl: "https://media.guim.co.uk/example/crop/500.jpg",
     });
+  });
+
+  // The upsert writes sixteen columns from sixteen parallel arrays, where a
+  // field landing in the wrong column is still valid SQL. Every value here is
+  // distinct, so a crossed pair fails rather than ships.
+  it("round-trips every stored field through Postgres", async () => {
+    guardian.serve([
+      guardianResult({
+        sectionName: "Film",
+        pillarName: "Arts",
+        tags: [{ id: "tone/reviews", type: "tone" }],
+        fields: {
+          headline: "A distinct headline",
+          trailText: "A distinct trail text",
+          standfirst: "A distinct standfirst",
+          byline: "A Distinct Critic in Cannes",
+          wordcount: "1234",
+          starRating: "4",
+        },
+      }),
+    ]);
+
+    const response = await get("/api/wire");
+
+    expect(response.body.stories[0]).toMatchObject({
+      title: "A distinct headline",
+      summary: "A distinct trail text",
+      standfirst: "A distinct standfirst",
+      byline: "A Distinct Critic in Cannes",
+      section: "Film",
+      pillar: "Arts",
+      tone: "reviews",
+      wordCount: 1234,
+      starRating: 4,
+      thumbnailUrl: "https://media.guim.co.uk/example/crop/500.jpg",
+      imageUrl: "https://media.guim.co.uk/example/crop/1000.jpg",
+      imageAlt: "A photograph illustrating the example story",
+      imageCredit: "Photograph: Example Photographer/Reuters",
+    });
+  });
+
+  // One round trip for the whole page, not one per story.
+  it("stores the whole page in a single insert", async () => {
+    guardian.serve(
+      Array.from({ length: 10 }, (_, index) =>
+        guardianResult({ id: `world/${index}` })
+      )
+    );
+
+    const querySpy = vi.spyOn(pool, "query");
+
+    try {
+      await get("/api/wire");
+
+      const inserts = querySpy.mock.calls.filter((call) =>
+        String(call[0]).includes("INSERT INTO stories")
+      );
+
+      expect(inserts).toHaveLength(1);
+    } finally {
+      querySpy.mockRestore();
+    }
+
+    const { rows } = await pool.query<{ count: string }>(
+      "SELECT COUNT(*) AS count FROM stories"
+    );
+    expect(Number(rows[0].count)).toBe(10);
   });
 
   it("serves a warm cache without calling upstream again", async () => {
@@ -76,7 +143,9 @@ describe("GET /api/wire", () => {
   it("upserts by external_id rather than duplicating a story", async () => {
     await get("/api/wire");
     await expireCache();
-    guardian.serve([guardianResult({ webTitle: "Example story, updated" })]);
+    guardian.serve([
+      guardianResult({ fields: { headline: "Example story, updated" } }),
+    ]);
 
     const response = await get("/api/wire");
 
@@ -178,7 +247,7 @@ describe("GET /api/wire", () => {
       Array.from({ length: 25 }, (_, index) =>
         guardianResult({
           id: `world/${index}`,
-          webTitle: `Story ${index}`,
+          fields: { headline: `Story ${index}` },
           // Index 0 is the newest.
           webPublicationDate: new Date(
             Date.UTC(2026, 6, 28, 12) - index * 60_000
