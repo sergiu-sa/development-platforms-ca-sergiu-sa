@@ -42,17 +42,62 @@ CREATE TABLE IF NOT EXISTS auth_attempts (
 CREATE INDEX IF NOT EXISTS auth_attempts_lookup_idx
   ON auth_attempts (scope, identifier, attempted_at DESC);
 
+-- The five card variants, resolved from the Guardian's tone tags. Storing it
+-- as an enum rather than free text means a tone the frontend has no card for
+-- cannot reach the table at all.
+--
+-- Its own DO block on purpose: one block per type. Sharing a block with
+-- briefing_status would mean the first duplicate_object aborts the rest,
+-- so the second type would silently never be created.
+DO $$ BEGIN
+  CREATE TYPE story_tone AS ENUM
+    ('minutebyminute', 'reviews', 'comment', 'features', 'news');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS stories (
   id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   external_id   TEXT NOT NULL UNIQUE,
   title         TEXT NOT NULL,
   summary       TEXT,
+  standfirst    TEXT,
+  byline        TEXT,
   url           TEXT NOT NULL,
   section       TEXT,
+  pillar        TEXT,
+  tone          story_tone NOT NULL DEFAULT 'news',
+  word_count    INTEGER,
+  star_rating   SMALLINT,
+  -- thumbnail_url is the 500px asset, image_url the 1000px one. The two paths
+  -- differ only in their final segment, so they are served as a srcset.
   thumbnail_url TEXT,
+  image_url     TEXT,
+  image_alt     TEXT,
+  image_credit  TEXT,
   published_at  TIMESTAMPTZ NOT NULL,
   fetched_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- CREATE TABLE IF NOT EXISTS leaves an existing table untouched, so on a
+-- database that already holds stories the columns above are reached only
+-- through these. Both halves are load-bearing: the definition above builds
+-- fresh installs and the test database, these migrate the deployed one.
+--
+-- Every added column is nullable or defaulted because the live table has rows
+-- that predate all of them. image_url in particular is guaranteed by the
+-- Guardian client - a story without an image is dropped rather than stored -
+-- but it cannot be NOT NULL here without breaking the re-apply.
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS standfirst   TEXT;
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS byline       TEXT;
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS pillar       TEXT;
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS tone         story_tone NOT NULL
+  DEFAULT 'news';
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS word_count   INTEGER;
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS star_rating  SMALLINT;
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS image_url    TEXT;
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS image_alt    TEXT;
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS image_credit TEXT;
 
 CREATE INDEX IF NOT EXISTS stories_recent_idx
   ON stories (published_at DESC, id DESC);

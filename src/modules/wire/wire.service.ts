@@ -10,7 +10,7 @@
 import { pool } from "../../db/connection.js";
 import { config } from "../../config/env.js";
 import { fetchGuardianStories } from "./wire.guardian.js";
-import type { WireStory } from "./wire.guardian.js";
+import type { StoryTone, WireStory } from "./wire.guardian.js";
 
 export const WIRE_PAGE_SIZE = 20;
 
@@ -18,9 +18,23 @@ export interface WireStoryRow {
   id: number;
   title: string;
   summary: string | null;
+  standfirst: string | null;
+  byline: string | null;
   url: string;
   section: string | null;
+  pillar: string | null;
+  tone: StoryTone;
+  wordCount: number | null;
+  starRating: number | null;
   thumbnailUrl: string | null;
+  /**
+   * Nullable on the way out even though the client guarantees it on the way
+   * in: rows stored before the column existed have none, and only the newest
+   * 50 stories are ever refreshed.
+   */
+  imageUrl: string | null;
+  imageAlt: string | null;
+  imageCredit: string | null;
   publishedAt: string;
 }
 
@@ -88,26 +102,51 @@ async function storeStories(stories: WireStory[]): Promise<void> {
 
   await pool.query(
     `INSERT INTO stories
-       (external_id, title, summary, url, section, thumbnail_url, published_at)
+       (external_id, title, summary, standfirst, byline, url, section, pillar,
+        tone, word_count, star_rating, thumbnail_url, image_url, image_alt,
+        image_credit, published_at)
      SELECT * FROM UNNEST(
-       $1::text[], $2::text[], $3::text[], $4::text[],
-       $5::text[], $6::text[], $7::timestamptz[]
+       $1::text[],       $2::text[],     $3::text[],        $4::text[],
+       $5::text[],       $6::text[],     $7::text[],        $8::text[],
+       $9::story_tone[], $10::int[],     $11::smallint[],   $12::text[],
+       $13::text[],      $14::text[],    $15::text[],       $16::timestamptz[]
      )
      ON CONFLICT (external_id) DO UPDATE SET
        title         = EXCLUDED.title,
        summary       = EXCLUDED.summary,
+       standfirst    = EXCLUDED.standfirst,
+       byline        = EXCLUDED.byline,
        url           = EXCLUDED.url,
        section       = EXCLUDED.section,
+       pillar        = EXCLUDED.pillar,
+       tone          = EXCLUDED.tone,
+       word_count    = EXCLUDED.word_count,
+       star_rating   = EXCLUDED.star_rating,
        thumbnail_url = EXCLUDED.thumbnail_url,
+       image_url     = EXCLUDED.image_url,
+       image_alt     = EXCLUDED.image_alt,
+       image_credit  = EXCLUDED.image_credit,
        published_at  = EXCLUDED.published_at,
        fetched_at    = now()`,
+    // One entry per column above, in the same order. A story field landing in
+    // the wrong column would still be valid SQL, so tests/wire.test.ts stores
+    // a distinct value in every field and reads them all back.
     [
       stories.map((story) => story.externalId),
       stories.map((story) => story.title),
       stories.map((story) => story.summary),
+      stories.map((story) => story.standfirst),
+      stories.map((story) => story.byline),
       stories.map((story) => story.url),
       stories.map((story) => story.section),
+      stories.map((story) => story.pillar),
+      stories.map((story) => story.tone),
+      stories.map((story) => story.wordCount),
+      stories.map((story) => story.starRating),
       stories.map((story) => story.thumbnailUrl),
+      stories.map((story) => story.imageUrl),
+      stories.map((story) => story.imageAlt),
+      stories.map((story) => story.imageCredit),
       stories.map((story) => story.publishedAt),
     ]
   );
@@ -167,9 +206,18 @@ interface StoryQueryRow {
   id: number;
   title: string;
   summary: string | null;
+  standfirst: string | null;
+  byline: string | null;
   url: string;
   section: string | null;
+  pillar: string | null;
+  tone: StoryTone;
+  word_count: number | null;
+  star_rating: number | null;
   thumbnail_url: string | null;
+  image_url: string | null;
+  image_alt: string | null;
+  image_credit: string | null;
   published_at: Date;
   total_count: string;
 }
@@ -183,7 +231,9 @@ export async function getWirePage(options: {
   const offset = (options.page - 1) * WIRE_PAGE_SIZE;
 
   const { rows } = await pool.query<StoryQueryRow>(
-    `SELECT id, title, summary, url, section, thumbnail_url, published_at,
+    `SELECT id, title, summary, standfirst, byline, url, section, pillar,
+            tone, word_count, star_rating, thumbnail_url, image_url,
+            image_alt, image_credit, published_at,
             COUNT(*) OVER () AS total_count
        FROM stories
       WHERE ($1::text IS NULL OR LOWER(section) = LOWER($1))
@@ -200,9 +250,18 @@ export async function getWirePage(options: {
       id: row.id,
       title: row.title,
       summary: row.summary,
+      standfirst: row.standfirst,
+      byline: row.byline,
       url: row.url,
       section: row.section,
+      pillar: row.pillar,
+      tone: row.tone,
+      wordCount: row.word_count,
+      starRating: row.star_rating,
       thumbnailUrl: row.thumbnail_url,
+      imageUrl: row.image_url,
+      imageAlt: row.image_alt,
+      imageCredit: row.image_credit,
       publishedAt: row.published_at.toISOString(),
     })),
     // COUNT() comes back as a bigint, which pg hands over as a string.
