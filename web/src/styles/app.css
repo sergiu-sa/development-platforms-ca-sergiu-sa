@@ -1,92 +1,291 @@
 @import "tailwindcss";
 
-/* wdth.css, NOT the package default - the default is weight-only and the
-   width axis is the whole point. Fraunces likewise needs opsz.css for
-   optical sizing. Italic is deliberately not loaded: nothing in this step
-   uses it, and it costs 81 KB. Add it with the board. */
-@import "@fontsource-variable/archivo/wdth.css";
-@import "@fontsource-variable/fraunces/opsz.css";
+/* Bricolage imports standard.css, NOT wdth.css.
+   Fontsource ships one file per axis combination, and the entry decides which
+   axes reach the browser at all - a font-variation-settings value for an axis
+   the file does not carry is ignored in silence, with no error anywhere. This
+   was measured rather than assumed (rendered widths at each axis extreme):
+
+     wght.css      wght only
+     wdth.css      wght + wdth,  opsz DEAD
+     opsz.css      wght + opsz,  wdth DEAD
+     standard.css  wght + wdth + opsz
+
+   The type scale runs from 12px furniture to the 8rem -30-, so opsz is load
+   bearing and standard.css is the only entry that carries it alongside wdth.
+   Importing wdth.css AND opsz.css does not work: same family, same weight
+   range, same stretch range, so the second @font-face simply replaces the
+   first. Latin subset costs 132 KB against wdth.css's 78 KB.
+
+   Martian Mono has no opsz axis and its wdth.css is byte-identical to its
+   standard.css, so wdth.css is the correct entry there. */
+@import "@fontsource-variable/bricolage-grotesque/standard.css";
+@import "@fontsource-variable/martian-mono/wdth.css";
 
 @theme {
-  --color-paper: #efece4;
-  /* board, clipping and hole belong to the briefing board, which is designed
-     in the spec but not built yet. Tailwind tree-shakes unreferenced theme
-     tokens, so they cost nothing in the bundle. Declared here so the palette
-     stays in one place rather than being rediscovered later. */
-  --color-board: #e4dfd2;
-  --color-clipping: #f6f4ee;
-  --color-hole: #dcd7c9;
-  --color-ink: #141310;
-  --color-signal: #c2371b;
+  /* The ground. Cold newsprint grey-green, deliberately not warm cream. */
+  --color-paper: #e8e9e4;
+  /* Recessed bands: control bar, hovered row, stale notice. */
+  --color-paper-2: #dedfd8;
+  /* Image placeholder before load. */
+  --color-paper-3: #d4d5cd;
+  --color-ink: #0b0b0c;
 
-  --font-wire: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-voice: "Fraunces Variable", ui-serif, Georgia, serif;
+  /* Two accents, and they are a semantic system rather than decoration: red is
+     the machine's time (live, now, on deck, skipped), blue is the reader's hand
+     (saved, chosen, filed, and every focus ring). Nothing else is ever
+     coloured.
 
-  /* The accessibility floor, and the lowest opacity any text on this site is
-     allowed to use. Ink at 0.72 over paper measures 6.85:1; at 0.55 it is
-     3.92:1 and fails WCAG AA. This MUST stay equal to OPACITY_MIN in
-     wire/ramp.ts - contrast.test.ts asserts the two are identical, so the
-     stylesheet and the ramp cannot drift apart. */
-  --opacity-floor: 0.72;
+     Red is split in two because #ff3b00 measures 2.93:1 on paper - it fails AA
+     for text and fails even the 3:1 non-text threshold. The design guarantees
+     red WORDS exist, because colour is never allowed to be the only signal, so
+     one token could not serve both jobs:
+
+       --color-red      filled marks that stand alone and carry no glyph
+       --color-red-ink  every red glyph, and every red fill sitting under text
+
+     red-ink is hue-locked to red (13.9 degrees, 100% saturation) so it reads as
+     the same ink deepened rather than as a second colour. It measures 5.09:1 on
+     paper and 4.63:1 on paper-2, which is the harder ground and the one that
+     decided the value. styles/contrast.test.ts holds the line, and asserts that
+     --color-red never appears in a color: declaration. */
+  --color-red: #ff3b00;
+  --color-red-ink: #b82b00;
+  --color-blue: #0026ff;
+
+  --color-rule: rgb(11 11 12 / 0.22);
+
+  /* The machine reports in mono, the wire is drawn in grotesque. Fraunces is
+     the third role - the curator's voice - and is deliberately NOT loaded until
+     /b/:slug exists in phase 9, because it costs ~81 KB and nothing before that
+     page uses it. */
+  --font-grot:
+    "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Martian Mono Variable", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* ---- base ---- */
+
+* {
+  box-sizing: border-box;
 }
 
 body {
-  /* How awake the wire is, 1 (just published) to 0 (nothing for 12h+). Set
-     from render.ts on every render. Never multiplied into text opacity -
-     that breaks the contrast floor (see ramp.ts). It drives only the signal
-     colour's saturation and the hairline rule alpha below, so a stale wire
-     looks asleep while every character keeps its measured contrast. */
-  --freshness: 1;
+  margin: 0;
   background: var(--color-paper);
   color: var(--color-ink);
-  font-family: var(--font-wire);
+  font-family: var(--font-grot);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* One rule consumes the ramp. Do not generate a Tailwind class per step -
-   that is 63 classes describing a continuous function. */
-.wire-head {
-  font-family: var(--font-wire);
-  font-size: calc(var(--size) * 1px);
+/* Focus is always visible, and it is always blue: choosing where you are is
+   the reader's hand, the same as saving. */
+:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+}
+
+/* ---- primitives ---- */
+
+/* Furniture: every label, slug, timestamp, button, byline and status. Set in
+   one class so the floor cannot be undercut in a one-off rule. 12px is the
+   floor for anything at all - see contrast.test.ts. */
+.m {
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-variation-settings:
-    "wdth" var(--wdth),
-    "wght" var(--wght);
-  opacity: var(--opacity);
-  line-height: 0.98;
-  letter-spacing: -0.035em;
+    "wdth" 80,
+    "wght" 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  line-height: 1;
 }
 
-/* ---- the wire page shell ---- */
+/* The dimmest any text on this site is allowed to go, and only for genuinely
+   secondary text. Ink at .72 measures 7.37:1 on paper and 7.01:1 on paper-2.
+   Never stack it with anything. */
+.quiet {
+  opacity: 0.72;
+}
 
-/* The measure is deliberately wide. At 74px, Archivo Expanded needs room: in
-   a 664px column the lead headline wrapped to six lines and left a dead flank
-   between the text and the clock rail. 84rem caps it on very large monitors
-   while filling a typical laptop, where the text measure lands near 1160px
-   and the lead falls to about three lines. The right padding clears the 4rem
-   rail so content runs up to it rather than stopping short. */
-/* One shell, shared by the nav band and the page body.
-   These were allowed to diverge once: the nav kept a 48rem cap from the
-   pre-redesign layout while .wire-page widened to 84rem, which put the
-   wordmark 280px to the right of the lead headline and left the nav's right
-   edge 200px short of the content's. Both now read from the same rule, so
-   changing the measure moves them together. */
+/* Visually hidden text uses Tailwind's own `sr-only` utility. The design spec
+   calls this primitive `.sr` and the prototype defines one, but writing it by
+   hand here reimplements a utility the framework already ships - and less
+   completely: `sr-only` also zeroes padding, margin and border-width, so a
+   padded or bordered child still takes no space. Use `sr-only` in markup. */
+
+/* Live is the one thing on the page allowed to move on its own, because the
+   story itself is still moving. Driven by the tone/minutebyminute tag, never by
+   looking for "- live" in the headline.
+
+   The dot takes currentColor rather than --color-red: the dot and the word are
+   one signal, so they are one colour. A hot dot beside a deep word reads as an
+   inconsistency, not as an indicator lamp - checked at real size. */
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--color-red-ink);
+}
+
+.live::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: beat 1.6s ease-in-out infinite;
+}
+
+@keyframes beat {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* The wordmark: the one place the two faces meet. Its full stop is red - the
+   machine's mark on the masthead - and red-ink rather than red because a full
+   stop is a glyph. */
+.word {
+  font-size: 1.5rem;
+  font-variation-settings:
+    "wdth" 75,
+    "wght" 800,
+    "opsz" 24;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.word b {
+  color: var(--color-red-ink);
+  font-weight: inherit;
+}
+
+/* A star rating drawn as filled squares. The row is a graphic and carries
+   aria-hidden; the rating reaches a screen reader as .sr text beside it. */
+.stars {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.stars i {
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--color-ink);
+}
+
+.stars i.on {
+  background: var(--color-ink);
+}
+
+/* ---- controls ---- */
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  /* Tailwind's preflight carries normalize's `button { text-transform: none }`,
+     which stops .m's uppercase at any button that inherits it rather than
+     carrying the class itself. Left alone, the one button in a row of furniture
+     renders mixed case - "Logout" beside "HOME" - and every control phase 3
+     builds inside a .m bar would do the same. Restoring inheritance makes a
+     button behave like every other element. */
+  text-transform: inherit;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--color-ink);
+  text-decoration: none;
+}
+
+.btn:hover {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.btn-blue {
+  background: var(--color-blue);
+  border-color: var(--color-blue);
+  color: var(--color-paper);
+}
+
+.btn-blue:hover {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+/* WCAG 1.4.3 exempts inactive controls from the contrast minimum, which is why
+   this is the one opacity below the .72 floor. contrast.test.ts skips
+   :disabled selectors explicitly rather than the floor being quietly lowered. */
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  background: none;
+  color: inherit;
+}
+
+.chip {
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--color-rule);
+}
+
+.chip:hover {
+  border-color: var(--color-ink);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.mini {
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--color-rule);
+  text-decoration: none;
+}
+
+.mini:hover {
+  border-color: var(--color-ink);
+}
+
+.mini-save:hover {
+  background: var(--color-blue);
+  border-color: var(--color-blue);
+  color: var(--color-paper);
+}
+
+/* red-ink rather than red: paper-coloured text sits on this fill. */
+.mini-skip:hover {
+  background: var(--color-red-ink);
+  border-color: var(--color-red-ink);
+  color: var(--color-paper);
+}
+
+/* ---- page shell ---- */
+
 .page-shell {
   max-width: 84rem;
   margin: 0 auto;
-  padding-left: 2rem;
-  /* Clears the 4rem fixed rail so content runs up to it, not under it. */
-  padding-right: 5.5rem;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
 .wire-page {
-  position: relative;
   padding-top: 2rem;
   padding-bottom: 4rem;
 }
 
-/* Nav links and the logout button. The old public/css/styles.css defined
-   .nav-link and was deleted with the rest of that tree, which left fourteen
-   elements carrying a class that matched no rule: no hover affordance
-   anywhere in the nav, and no pointer cursor on the logout <button>. */
 .nav-link {
   color: inherit;
   text-decoration: none;
@@ -101,85 +300,56 @@ body {
   text-decoration: underline;
 }
 
-.wire-main a {
+/* ---- the wire list ----
+   Provisional. Phase 3 replaces this page with the deck and phase 4 builds the
+   real browse row; this is the plain list that keeps the homepage honest in the
+   meantime, built from the same tokens so nothing here has to be unlearned. */
+
+.wire-list a {
   color: inherit;
   text-decoration: none;
 }
 
-.wire-main a:hover {
+.wire-list a:hover {
   text-decoration: underline;
 }
 
-/* A hairline between stories, and the rule above the tail. Alpha (not
-   opacity on text) is what freshness is allowed to touch, so a stale wire's
-   dividers fade toward the paper without a single character losing
-   contrast. */
 .wire-item {
-  padding: 0.9rem 0;
-  border-bottom: 1px solid rgb(20 19 16 / calc(0.04 + 0.14 * var(--freshness)));
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--color-rule);
 }
 
-.wire-item:first-child {
-  padding-top: 0;
+.wire-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
 }
 
-/* Section label + inline relative time, above every headline. This is the
-   signal colour - the only thing freshness is allowed to desaturate. */
-.psec {
-  display: block;
-  margin-bottom: 0.4rem;
-  font-size: 0.6875rem;
+.wire-item-h {
+  font-size: 21px;
   font-variation-settings:
-    "wdth" 80,
-    "wght" 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-signal);
-  filter: saturate(var(--freshness));
+    "wdth" 92,
+    "wght" 700,
+    "opsz" 21;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  margin: 0;
 }
 
-.wire-img {
-  display: block;
-  width: 100%;
-  max-height: 22rem;
-  object-fit: cover;
-  margin-top: 0.75rem;
+.wire-item-t {
+  font-size: 15px;
+  line-height: 1.45;
+  margin: 0.4rem 0 0;
+  max-width: 62ch;
 }
 
-/* Ranks beyond ~12: small type in three columns, timestamp and headline
-   only. Weight and width keep following the ramp; size is fixed at the
-   11px floor rather than shrinking further (the ramp's own accessibility
-   rule - see ramp.ts). */
-.wire-tail {
-  columns: 3;
-  column-gap: 1.75rem;
-  padding-top: 1rem;
-  margin-top: 0.5rem;
-  border-top: 1px solid rgb(20 19 16 / calc(0.04 + 0.14 * var(--freshness)));
-}
-
-.wire-tail-item {
-  break-inside: avoid;
-  font-size: 11px;
-  font-variation-settings:
-    "wdth" var(--wdth),
-    "wght" var(--wght);
-  opacity: var(--opacity);
-  line-height: 1.4;
-  margin-bottom: 0.6rem;
-}
-
-.wire-tail-item time {
-  font-variation-settings:
-    "wdth" var(--wdth),
-    "wght" 700;
-  margin-right: 0.35em;
-}
-
+/* Stale is a timestamp, never an alarm: a quiet band with the last refresh
+   time, above stories that read perfectly well for being an hour old. */
 .wire-stale {
-  font-size: 0.75rem;
-  opacity: var(--opacity-floor);
-  margin-bottom: 1rem;
+  background: var(--color-paper-2);
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 1.5rem;
 }
 
 .wire-empty {
@@ -187,94 +357,24 @@ body {
 }
 
 .wire-empty-h {
-  font-family: var(--font-voice);
-  font-size: 1.85rem;
-  margin-bottom: 0.5rem;
+  font-size: clamp(1.75rem, 2.6vw, 2.75rem);
+  font-variation-settings:
+    "wdth" 85,
+    "wght" 600,
+    "opsz" 40;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.6rem;
 }
 
 .wire-empty-s {
-  font-size: 0.9rem;
-  opacity: var(--opacity-floor);
+  font-size: 17px;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 48ch;
 }
 
-/* The clock rail: fixed on the right, "now" in signal, then ticks back
-   through the day - the scrubber that says where in the day you are. It is
-   aria-hidden because it is decorative context alongside the real per-story
-   <time> elements, never the only place a timestamp appears. */
-.wire-rail {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 4rem;
-  border-left: 1px solid rgb(20 19 16 / calc(0.04 + 0.14 * var(--freshness)));
-  pointer-events: none;
-}
-
-.wire-tick {
-  position: absolute;
-  left: 0;
-  padding-left: 0.6rem;
-  font-size: 0.625rem;
-  font-variation-settings:
-    "wdth" 78,
-    "wght" 500;
-  letter-spacing: 0.06em;
-  opacity: var(--opacity-floor);
-  white-space: nowrap;
-}
-
-.wire-tick::before {
-  content: "";
-  position: absolute;
-  left: -1px;
-  top: 0.35em;
-  width: 0.4rem;
-  height: 1px;
-  background: rgb(20 19 16 / 0.35);
-}
-
-.wire-tick-now {
-  color: var(--color-signal);
-  filter: saturate(var(--freshness));
-  opacity: 1;
-  font-variation-settings:
-    "wdth" 88,
-    "wght" 700;
-}
-
-.wire-tick-now::before {
-  width: 0.7rem;
-  background: var(--color-signal);
-  filter: saturate(var(--freshness));
-}
-
-@media (max-width: 40rem) {
-  .wire-rail {
-    display: none;
-  }
-
-  /* The rail is hidden here, so nothing needs clearing. Applied to the shared
-     shell rather than .wire-page alone, or the nav keeps a gutter for a rail
-     that is no longer on screen. */
-  .page-shell {
-    padding-right: 1.5rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* ---- auth pages: login and register ----
-   Quiet and typographic, not a showpiece: a single narrow column on paper,
-   Archivo throughout (Fraunces is reserved for curator-written words - see
-   app.css above - so it never appears on UI chrome like a form). */
+/* ---- auth pages ----
+   Repointed to the new tokens, not restyled: phase 11 does the real pass. */
 
 .auth-page {
   max-width: 26rem;
@@ -283,13 +383,13 @@ body {
 }
 
 .auth-h {
-  font-family: var(--font-wire);
   font-size: 1.75rem;
   font-variation-settings:
-    "wdth" 100,
-    "wght" 700;
+    "wdth" 90,
+    "wght" 700,
+    "opsz" 28;
   letter-spacing: -0.02em;
-  margin-bottom: 2rem;
+  margin: 0 0 2rem;
 }
 
 .auth-form {
@@ -300,79 +400,57 @@ body {
 
 .auth-label {
   display: block;
-  font-size: 0.75rem;
-  font-variation-settings:
-    "wdth" 90,
-    "wght" 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: var(--opacity-floor);
   margin-bottom: 0.4rem;
 }
 
 .auth-input {
   display: block;
   width: 100%;
-  background: var(--color-clipping);
-  border: 1px solid rgb(20 19 16 / 0.16);
+  background: var(--color-paper-2);
+  border: 1px solid var(--color-rule);
   padding: 0.65rem 0.75rem;
-  font-family: var(--font-wire);
-  font-size: 0.95rem;
+  font-family: var(--font-grot);
+  font-size: 16px;
   color: var(--color-ink);
 }
 
-.auth-input:focus {
-  outline: 2px solid var(--color-ink);
-  outline-offset: 1px;
-}
-
 .auth-hint {
-  font-size: 0.75rem;
-  opacity: var(--opacity-floor);
+  font-size: 15px;
   margin-top: 0.4rem;
 }
 
-/* Errors use --signal at full strength - the only colour on this site
-   reserved for things that are live or chosen, and the one this form needs
-   to speak with. */
+/* Errors state what happened. red-ink because this is a word, and it is the
+   only colour this form needs to speak with. */
 .auth-error {
-  font-size: 0.85rem;
-  font-variation-settings:
-    "wdth" 100,
-    "wght" 600;
-  color: var(--color-signal);
+  font-size: 15px;
+  color: var(--color-red-ink);
 }
 
 .auth-success {
-  font-size: 0.85rem;
-  font-variation-settings:
-    "wdth" 100,
-    "wght" 600;
-}
-
-.auth-submit {
-  align-self: flex-start;
-  margin-top: 0.5rem;
-  padding: 0.65rem 1.5rem;
-  background: var(--color-ink);
-  color: var(--color-paper);
-  font-family: var(--font-wire);
-  font-size: 0.85rem;
-  font-variation-settings:
-    "wdth" 100,
-    "wght" 700;
-  letter-spacing: 0.02em;
-  border: none;
-  cursor: pointer;
-}
-
-.auth-submit:disabled {
-  opacity: var(--opacity-floor);
-  cursor: default;
+  font-size: 15px;
+  color: var(--color-blue);
 }
 
 .auth-foot {
   margin-top: 2rem;
-  font-size: 0.85rem;
-  opacity: var(--opacity-floor);
+  font-size: 15px;
+}
+
+/* prefers-reduced-motion: the decision still happens, instantly - only the
+   animation is removed. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .live::before {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
