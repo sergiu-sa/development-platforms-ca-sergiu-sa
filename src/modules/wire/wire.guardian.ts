@@ -37,20 +37,26 @@ const MAX_STAR_RATING = 5;
  * so the first match down this list wins. Taking the first tag the API happens
  * to return would label most live blogs as ordinary news.
  */
-export type StoryTone =
-  | "minutebyminute"
-  | "reviews"
-  | "comment"
-  | "features"
-  | "news";
-
-const TONE_PRECEDENCE: readonly StoryTone[] = [
+/**
+ * The one place the set of tones is written in TypeScript. StoryTone is derived
+ * from it, so a variant added here is added to the type - listing them twice
+ * would let the array fall a member short without the compiler noticing.
+ *
+ * The set is declared once more, unavoidably, as the story_tone enum in
+ * db/schema.sql. tests/schema-drift.test.ts asserts the two agree, because a
+ * tone that exists here but not there makes the bulk insert throw - and
+ * refreshIfNeeded() swallows refresh errors by design, so the only symptom
+ * would be a wire that quietly serves stale content forever.
+ */
+export const TONE_PRECEDENCE = [
   "minutebyminute",
   "reviews",
   "comment",
   "features",
   "news",
-];
+] as const;
+
+export type StoryTone = (typeof TONE_PRECEDENCE)[number];
 
 const TONE_TAG_PREFIX = "tone/";
 

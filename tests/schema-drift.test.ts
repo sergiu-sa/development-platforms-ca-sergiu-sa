@@ -25,6 +25,7 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { pool } from "../src/db/connection.js";
+import { TONE_PRECEDENCE } from "../src/modules/wire/wire.guardian.js";
 import { closeDatabase } from "./helpers/db.js";
 
 const schemaSql = readFileSync("db/schema.sql", "utf8");
@@ -45,6 +46,8 @@ const LEGACY_STORIES = `
 
 interface AppliedSchema {
   columns: string[];
+  /** The labels of the story_tone enum, sorted. */
+  toneLabels: string[];
   /** The tone of the row seeded before migrating, if one was seeded. */
   seededTone: string | null;
 }
@@ -93,7 +96,23 @@ async function applySchemaIn(
       [name]
     );
 
-    return { columns: rows.map((row) => row.column_name), seededTone };
+    // Sorted by label rather than by enum position: the order Postgres stores
+    // them in carries no meaning here, only which labels exist.
+    const { rows: tones } = await client.query<{ enumlabel: string }>(
+      `SELECT e.enumlabel
+         FROM pg_type t
+         JOIN pg_namespace n ON n.oid = t.typnamespace
+         JOIN pg_enum e ON e.enumtypid = t.oid
+        WHERE t.typname = 'story_tone' AND n.nspname = $1
+        ORDER BY e.enumlabel`,
+      [name]
+    );
+
+    return {
+      columns: rows.map((row) => row.column_name),
+      toneLabels: tones.map((row) => row.enumlabel),
+      seededTone,
+    };
   } finally {
     await client.query(`DROP SCHEMA IF EXISTS ${name} CASCADE`);
     client.release();
@@ -154,6 +173,25 @@ describe("db/schema.sql applied to an existing database", () => {
     const migrated = await applySchemaIn("drift_legacy", LEGACY_STORIES);
 
     expect(migrated.seededTone).toBe("news");
+  });
+
+  // The set of tones exists in two places that cannot be collapsed: the enum
+  // here and TONE_PRECEDENCE in the Guardian client. A tone in the code but not
+  // the enum makes the bulk upsert throw, and refreshIfNeeded() swallows
+  // refresh failures on purpose - so the wire would serve stale content
+  // indefinitely with nothing logged as the cause.
+  it("declares exactly the tones the Guardian client resolves", async () => {
+    const fresh = await applySchemaIn("drift_fresh");
+    const fromCode = [...TONE_PRECEDENCE].sort();
+
+    expect(
+      fresh.toneLabels,
+      "The story_tone enum in db/schema.sql and TONE_PRECEDENCE in " +
+        "src/modules/wire/wire.guardian.ts have drifted apart. Both must " +
+        "list the same tones:\n" +
+        `    schema.sql:  ${fresh.toneLabels.join(", ")}\n` +
+        `    wire client: ${fromCode.join(", ")}`
+    ).toEqual(fromCode);
   });
 
   it("is safe to run twice", async () => {
