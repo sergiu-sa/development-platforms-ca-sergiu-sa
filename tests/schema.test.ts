@@ -104,6 +104,30 @@ describe("users indexes", () => {
   });
 });
 
+describe("stories constraints", () => {
+  // tone picks the card a story is drawn as, so a value the frontend has no
+  // card for must not be storable in the first place.
+  it("rejects a tone outside the enum", async () => {
+    await expectPgError(
+      pool.query(
+        `INSERT INTO stories (external_id, title, url, published_at, tone)
+         VALUES ('ext-tone', 'Story', 'https://example.com/t', now(), 'gallery')`
+      ),
+      INVALID_ENUM_VALUE
+    );
+  });
+
+  it("defaults a story with no tone to news", async () => {
+    const { rows } = await pool.query<{ tone: string }>(
+      `INSERT INTO stories (external_id, title, url, published_at)
+       VALUES ('ext-default-tone', 'Story', 'https://example.com/d', now())
+       RETURNING tone`
+    );
+
+    expect(rows[0].tone).toBe("news");
+  });
+});
+
 describe("briefing_items constraints", () => {
   // The "still renders in a year" guarantee: wire cache cleanup must be
   // physically incapable of breaking a published briefing.
