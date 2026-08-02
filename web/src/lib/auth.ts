@@ -29,6 +29,22 @@ function getUser() {
 
 function logout() {
   removeToken();
+
+  // Everything this tab remembers about the reader goes with the token.
+  // sessionStorage survives a same-tab navigation, so without this the deck
+  // would restore the previous reader's saved and skipped stories to whoever
+  // uses the browser next.
+  //
+  // Cleared wholesale rather than by key, for two reasons: `lib` must not
+  // import from `wire`, and anything a later phase decides to keep here is
+  // covered without anyone having to remember to add it.
+  //
+  // Deliberately NOT done on login. Phase 6 migrates an anonymous session into
+  // the account on first sign-in, which is a designed feature rather than a
+  // leak - and clearing at logout is what stops that feature adopting somebody
+  // else's session.
+  sessionStorage.clear();
+
   window.location.href = "/index.html";
 }
 
@@ -39,7 +55,7 @@ export function updateNavigation() {
   const loginLink = document.getElementById("nav-login");
   const registerLink = document.getElementById("nav-register");
   const logoutBtn = document.getElementById("nav-logout");
-  const userLabel = document.getElementById("nav-user-email");
+  const userLabel = document.getElementById("nav-user");
 
   // Visibility is the `hidden` attribute rather than an inline style. The
   // markup has to declare a starting state, and a style="display:none" in HTML
