@@ -32,7 +32,7 @@ import {
 import type { DeckStore } from "./store";
 import type { Decision } from "./types";
 import { escapeHtml } from "../lib/html";
-import { storySlug } from "../lib/slug";
+import { slugIndex } from "../lib/slug";
 
 /** Long enough to outlast the 260ms flight, short enough to never be seen. */
 const GHOST_TIMEOUT_MS = 600;
@@ -110,6 +110,18 @@ function errorPanel(): string {
  * deck's own node - a failed request is a state of the deck, and `deck-slot`
  * should be an id only this module knows.
  */
+/**
+ * Returns the reader to the deck, ready to decide.
+ *
+ * Exported because the spine's "Back to the deck" and the toast both need it,
+ * and `deck-skip` is an id only this module should know - the header above
+ * says the same about `deck-slot`. Without this the deck's action bar could be
+ * renamed and two other modules would silently stop moving focus.
+ */
+export function focusDeck(): void {
+  document.getElementById("deck-skip")?.focus({ preventScroll: true });
+}
+
 export function showDeckError(): void {
   const slot = document.getElementById("deck-slot");
   const acts = document.getElementById("deck-acts");
@@ -137,14 +149,24 @@ function stagePanel(state: DeckState, status: DeckStatus): string {
  * 10px, under the binding floor, and taking the size from the furniture class
  * means the floor cannot be undercut here by accident.
  */
-function slugColumn(state: DeckState, kind: Decision): string {
-  return state.stories
-    .filter((story) => state.decisions.get(story.id) === kind)
-    .map(
-      (story) =>
-        `<span class="slug m">${escapeHtml(storySlug(story.section, story.id))}</span>`
-    )
-    .join("");
+function slugColumn(
+  state: DeckState,
+  kind: Decision,
+  slugs: ReadonlyMap<number, string>
+): string {
+  const column: string[] = [];
+
+  // Decision order, not wire order: a Map iterates by insertion, so this is
+  // the order the reader actually made them in. Reversed so the newest is on
+  // top, like a slip threaded onto a spike - the rail clips at a fixed height,
+  // and oldest-first meant the decisions just made were the ones that fell off.
+  for (const [id, decision] of state.decisions) {
+    const slug = slugs.get(id);
+    if (decision !== kind || slug === undefined) continue;
+    column.push(`<span class="slug m">${escapeHtml(slug)}</span>`);
+  }
+
+  return column.reverse().join("");
 }
 
 export function mountDeck(store: DeckStore): void {
@@ -164,11 +186,39 @@ export function mountDeck(store: DeckStore): void {
   // reload.
   const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+  // The wire does not change for the store's lifetime, so the rails' slugs are
+  // built once rather than twice per decision.
+  const slugs = slugIndex(store.get().stories);
+
+  // The bindings are on the document, so they follow the reader down the page:
+  // before this, pressing S while reading the browse list decided the card
+  // behind them, on a screen they could not see. Nothing becomes unreachable,
+  // because every row carries its own labelled Save and Skip.
+  //
+  // Starts true and stays true if the browser has no IntersectionObserver: the
+  // failure to know where the deck is should cost the reader nothing.
+  let deckInView = true;
+  const deckSection = document.querySelector(".deck");
+  if (deckSection && typeof window.IntersectionObserver === "function") {
+    new window.IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) deckInView = entry.isIntersecting;
+      },
+      { threshold: 0 }
+    ).observe(deckSection);
+  }
+
   // The last action already animated, held by reference. Comparing by
   // reference is what stops a re-render for some other reason replaying the
   // flight that has already happened.
   let animated = store.get().lastAction;
   let firstRender = true;
+  // Which story the card in the slot is actually showing. The fly-out belongs
+  // to the card that was decided, and from phase 4 a decision can land on any
+  // story on the wire - a row's Save, a tray chip's Remove - while a different
+  // one is on deck. Without this the deck animates whatever it happens to be
+  // holding, telling the reader a card they never touched has gone.
+  let shownStoryId = currentStory(store.get())?.id ?? null;
 
   const flyOut = (ghost: HTMLElement, to: Decision): void => {
     // The clone inherits every class the live card had, `dealt` among them.
@@ -201,9 +251,19 @@ export function mountDeck(store: DeckStore): void {
   const renderStage = (state: DeckState, status: DeckStatus): void => {
     const story = currentStory(state);
 
+    // A flight needs three things: an action nothing has animated yet, one
+    // that lands on the card actually in the slot, and a decision rather than
+    // a decision taken back. The last is guaranteed by the second - the card
+    // on deck is by definition undecided, and clearing an undecided story is a
+    // no-op that never reaches here - but it is stated rather than reasoned
+    // about, because it is also what narrows `to` for the cascade below.
+    const action = state.lastAction;
     const flying =
-      state.lastAction && state.lastAction !== animated
-        ? state.lastAction
+      action &&
+      action !== animated &&
+      action.storyId === shownStoryId &&
+      action.to !== null
+        ? { storyId: action.storyId, to: action.to }
         : null;
     animated = state.lastAction;
 
@@ -238,6 +298,8 @@ export function mountDeck(store: DeckStore): void {
       slot.querySelector(".card:not(.leaving)")?.classList.add("dealt");
     }
 
+    shownStoryId = story?.id ?? null;
+
     acts.hidden = status !== "dealing";
 
     if (focusWasInActs || focusWasInSlot) {
@@ -249,7 +311,7 @@ export function mountDeck(store: DeckStore): void {
       } else if (focusWasInSlot) {
         // A card or panel the reader was inside has been replaced by another
         // card. Undoing back out of the cleared state lands here.
-        document.getElementById("deck-skip")?.focus();
+        focusDeck();
       }
     }
 
@@ -281,8 +343,9 @@ export function mountDeck(store: DeckStore): void {
 
     if (savedCount) savedCount.textContent = String(saved);
     if (skippedCount) skippedCount.textContent = String(skipped);
-    if (savedSlugs) savedSlugs.innerHTML = slugColumn(state, "saved");
-    if (skippedSlugs) skippedSlugs.innerHTML = slugColumn(state, "skipped");
+    if (savedSlugs) savedSlugs.innerHTML = slugColumn(state, "saved", slugs);
+    if (skippedSlugs)
+      skippedSlugs.innerHTML = slugColumn(state, "skipped", slugs);
   };
 
   // The wire's length is fixed for the store's lifetime, so this is written
@@ -324,7 +387,7 @@ export function mountDeck(store: DeckStore): void {
 
     store.dealMore();
     // The button that was clicked no longer exists.
-    document.getElementById("deck-skip")?.focus();
+    focusDeck();
   });
 
   document.addEventListener("keydown", (event) => {
@@ -348,11 +411,20 @@ export function mountDeck(store: DeckStore): void {
 
     const key = event.key.toLowerCase();
 
+    // Undo is the one key that stays global. The toast that offers it is
+    // fixed-position, so wherever the reader is standing there is feedback.
+    if (key === "z") {
+      store.undo();
+      event.preventDefault();
+      return;
+    }
+
+    if (!deckInView) return;
+
     if (key === "x" || event.key === "ArrowLeft")
       store.decideCurrent("skipped");
     else if (key === "s" || event.key === "ArrowRight")
       store.decideCurrent("saved");
-    else if (key === "z") store.undo();
     else return;
 
     event.preventDefault();

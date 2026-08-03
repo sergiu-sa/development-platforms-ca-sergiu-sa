@@ -26,7 +26,12 @@ export interface LastAction {
   storyId: number;
   /** What the story was before, so undo restores it rather than clearing it. */
   from: Decision | null;
-  to: Decision;
+  /**
+   * `null` is Remove and Un-skip - a decision taken back rather than changed.
+   * Both are first-class verbs in the design spec, and both are undoable, so
+   * the shape that describes an action has to be able to say "none".
+   */
+  to: Decision | null;
 }
 
 export interface DeckState {
@@ -188,6 +193,27 @@ export function decide(
   decisions.set(storyId, to);
 
   return { ...state, decisions, lastAction: { storyId, from, to } };
+}
+
+/**
+ * Takes a decision back, returning the story to undecided. Remove on a saved
+ * story, Un-skip on a skipped one - one transition, because the difference is
+ * only what it is called on screen.
+ *
+ * Recorded as an action so it undoes like any other. Clearing a story that was
+ * never decided changes nothing and must not count, for the same reason
+ * deciding a story the way it already is does not: the tray and the row can
+ * both ask, and spending the reader's single step of undo on a no-op would
+ * strand the decision before it.
+ */
+export function clearDecision(state: DeckState, storyId: number): DeckState {
+  const from = state.decisions.get(storyId) ?? null;
+  if (from === null) return state;
+
+  const decisions = new Map(state.decisions);
+  decisions.delete(storyId);
+
+  return { ...state, decisions, lastAction: { storyId, from, to: null } };
 }
 
 /**

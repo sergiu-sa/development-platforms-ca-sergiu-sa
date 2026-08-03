@@ -12,7 +12,8 @@
  * free.
  */
 
-import { decisionLabel } from "./copy";
+import { actionLabel } from "./copy";
+import { focusDeck } from "./deck-view";
 import {
   counts,
   cursor,
@@ -64,7 +65,7 @@ export function mountToast(store: DeckStore): void {
     // drops it to <body>. Hand focus back to the deck rather than losing it.
     const hadFocus = toast.contains(document.activeElement);
     toast.hidden = true;
-    if (hadFocus) document.getElementById("deck-skip")?.focus();
+    if (hadFocus) focusDeck();
   };
 
   const scheduleHide = (): void => {
@@ -97,7 +98,7 @@ export function mountToast(store: DeckStore): void {
       shown = action;
 
       const slug = storySlug(story.section, story.id);
-      const verb = decisionLabel(action.to);
+      const verb = actionLabel(action);
 
       text.textContent = `${verb} ${slug}`;
       undoButton.setAttribute(
