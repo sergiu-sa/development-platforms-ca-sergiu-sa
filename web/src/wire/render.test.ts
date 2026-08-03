@@ -1,17 +1,19 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach } from "vitest";
-import { renderWire } from "./render";
+import { renderWire, syncDecisions } from "./render";
+import { createDeck, decide } from "./deck";
+import { makeStory } from "./story.fixture";
+import type { Story } from "./types";
 
-const story = (over = {}) => ({
-  id: 1,
-  title: "Half of England in drought",
-  summary: "Seven regions affected",
-  url: "https://theguardian.com/x",
-  section: "Environment",
-  thumbnailUrl: "https://media.guim.co.uk/x/500.jpg",
-  publishedAt: "2026-07-29T13:02:00.000Z",
-  ...over,
-});
+const story = (over: Partial<Story> = {}) =>
+  makeStory({
+    title: "Half of England in drought",
+    summary: "Seven regions affected",
+    url: "https://theguardian.com/x",
+    section: "Environment",
+    publishedAt: "2026-07-29T13:02:00.000Z",
+    ...over,
+  });
 
 let el: HTMLElement;
 beforeEach(() => {
@@ -96,5 +98,90 @@ describe("renderWire", () => {
   it("always prints a machine-readable timestamp", () => {
     renderWire(el, { success: true, stale: false, stories: [story()] });
     expect(el.querySelector("time")).not.toBeNull();
+  });
+
+  it("labels each row with the same slug the deck's rails use", () => {
+    renderWire(el, {
+      success: true,
+      stale: false,
+      stories: [story({ id: 42 })],
+    });
+    expect(el.textContent).toContain("ENVIRONM-42");
+  });
+
+  it("writes the story id as a number, not as whatever arrived", () => {
+    // The only interpolation on this page that is not escaped, so it is
+    // coerced instead. A string id carrying a quote would break the attribute.
+    renderWire(el, {
+      success: true,
+      stale: false,
+      stories: [story({ id: '1" onmouseover="alert(1)' as unknown as number })],
+    });
+
+    expect(el.querySelector("[onmouseover]")).toBeNull();
+    expect(el.querySelector(".wire-item")?.getAttribute("data-story-id")).toBe(
+      "NaN"
+    );
+  });
+
+  it("puts rows below the section heading in the outline", () => {
+    // h1 "The wire" > h2 "Everything on the wire" > h3 per story.
+    renderWire(el, { success: true, stale: false, stories: [story()] });
+    expect(el.querySelector(".wire-item-h")?.tagName).toBe("H3");
+  });
+});
+
+describe("syncDecisions", () => {
+  const stories = [story({ id: 1 }), story({ id: 2 }), story({ id: 3 })];
+
+  const paint = (decided: ReturnType<typeof createDeck>) => {
+    renderWire(el, { success: true, stale: false, stories });
+    syncDecisions(el, decided);
+  };
+
+  const row = (id: number) =>
+    el.querySelector<HTMLElement>(`[data-story-id="${id}"]`)!;
+
+  it("marks a saved row with a word, not only a colour", () => {
+    paint(decide(createDeck(stories), 2, "saved"));
+
+    expect(row(2).dataset.state).toBe("saved");
+    // The word a reader sees, not the union member the code passes around.
+    expect(row(2).querySelector(".wire-item-state")?.textContent).toBe("Saved");
+  });
+
+  it("marks a skipped row the same way", () => {
+    paint(decide(createDeck(stories), 3, "skipped"));
+
+    expect(row(3).dataset.state).toBe("skipped");
+    expect(row(3).querySelector(".wire-item-state")?.textContent).toBe(
+      "Skipped"
+    );
+  });
+
+  it("leaves undecided rows unmarked", () => {
+    paint(decide(createDeck(stories), 1, "saved"));
+
+    expect(row(2).dataset.state).toBeUndefined();
+    expect(row(2).querySelector(".wire-item-state")?.textContent).toBe("");
+  });
+
+  it("clears a row when the decision is undone", () => {
+    const decided = decide(createDeck(stories), 1, "saved");
+    paint(decided);
+    expect(row(1).dataset.state).toBe("saved");
+
+    syncDecisions(el, createDeck(stories));
+    expect(row(1).dataset.state).toBeUndefined();
+  });
+
+  it("does not rebuild the rows", () => {
+    // A re-render would drop the focus of anyone who had tabbed to a headline
+    // before the deck advanced.
+    paint(createDeck(stories));
+    const before = row(1);
+
+    syncDecisions(el, decide(createDeck(stories), 1, "saved"));
+    expect(row(1)).toBe(before);
   });
 });
