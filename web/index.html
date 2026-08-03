@@ -5,31 +5,123 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lede - The Wire</title>
   </head>
-  <body class="min-h-screen">
-    <nav class="border-b border-rule">
-      <div class="page-shell py-4 flex justify-between items-center">
-        <a href="/index.html" class="word">Lede<b>.</b></a>
-        <div class="m flex items-center gap-4">
-          <a href="/index.html" class="nav-link">Home</a>
-          <a href="/login.html" id="nav-login" class="nav-link">Login</a>
-          <a href="/register.html" id="nav-register" class="nav-link"
-            >Register</a
+  <body>
+    <!-- One stable h1 for the whole page. The card's headline is an h2: it
+         changes on every keypress, and a heading that moves under a screen
+         reader is worse than one that is never seen. -->
+    <h1 class="sr-only">The wire</h1>
+
+    <section class="deck">
+      <!-- The rails are a visual record of the session. Decorative: every
+           decision they show is announced by the live region below, so reading
+           out a column of slugs would only repeat it. -->
+      <aside class="rail rail-skip" aria-hidden="true">
+        <span class="rail-name m">Skipped</span>
+        <span class="rail-n" id="rail-skip-n">0</span>
+        <div class="spindle" id="rail-skip-slugs"></div>
+      </aside>
+
+      <div class="stage">
+        <header class="top">
+          <a href="/index.html" class="word">Lede<b>.</b></a>
+          <p class="top-mid m quiet" id="dateline"></p>
+          <p class="gauge m">
+            <span id="deck-position"></span>
+            <span class="gauge-bar" id="gauge-bar" aria-hidden="true"></span>
+          </p>
+          <nav class="top-nav m" aria-label="Account">
+            <a href="/login.html" id="nav-login" class="nav-link">Log in</a>
+            <span id="nav-user" class="quiet top-nav-user" hidden></span>
+            <button id="nav-logout" class="nav-link" type="button" hidden>
+              Log out
+            </button>
+          </nav>
+        </header>
+
+        <div class="card-wrap" id="deck-slot">
+          <div class="deck-panel">
+            <p class="deck-panel-line">Loading the wire...</p>
+          </div>
+        </div>
+
+        <!-- A fixed-height row, so the labels shorten rather than wrap. Both
+             lengths are aria-hidden and the button carries one constant label,
+             so a screen reader hears "Skip this story" at every width instead
+             of hearing it twice at one width. -->
+        <div class="acts" id="deck-acts" hidden>
+          <button
+            class="act act-skip"
+            id="deck-skip"
+            type="button"
+            aria-label="Skip this story (keyboard shortcut X)"
           >
-          <span id="nav-user-email" class="quiet" hidden></span>
-          <button id="nav-logout" class="nav-link" hidden>Logout</button>
+            <span class="key m" aria-hidden="true">X</span>
+            <span class="m long" aria-hidden="true">Skip this story</span>
+            <span class="m short" aria-hidden="true">Skip</span>
+          </button>
+          <!-- The count is pulled out of the two shortening labels so it
+               exists once, rather than being written into both. -->
+          <a class="act act-browse m" href="#browse" id="deck-browse">
+            <span class="long" aria-hidden="true">Browse all</span>
+            <span class="short" aria-hidden="true">All</span>
+            <span aria-hidden="true"
+              ><span id="browse-count">0</span> &darr;</span
+            >
+          </a>
+          <button
+            class="act act-save"
+            id="deck-save"
+            type="button"
+            aria-label="Save to my desk (keyboard shortcut S)"
+          >
+            <span class="m long" aria-hidden="true">Save to my desk</span>
+            <span class="m short" aria-hidden="true">Save</span>
+            <span class="key m" aria-hidden="true">S</span>
+          </button>
         </div>
       </div>
-    </nav>
 
-    <div class="page-shell wire-page">
-      <!-- The list starts at <h2>, because no single story is the page's
-           subject. Without this the document has no top-level heading at all
-           and the outline begins at level 2. Visually hidden, not absent. -->
-      <h1 class="sr-only">The Wire</h1>
-      <main id="wire-container">
-        <p class="m quiet">Loading the wire...</p>
-      </main>
+      <aside class="rail rail-save" aria-hidden="true">
+        <span class="rail-name m">Saved</span>
+        <span class="rail-n" id="rail-save-n">0</span>
+        <div class="spindle" id="rail-save-slugs"></div>
+      </aside>
+    </section>
+
+    <!-- Sits here rather than at the end of the body so a keyboard walk
+         reaches Undo straight after the decision that offered it. -->
+    <div class="toast" id="deck-toast" hidden>
+      <span class="m" id="toast-text" aria-hidden="true"></span>
+      <button class="m toast-undo" id="deck-undo" type="button">
+        <span aria-hidden="true">Undo</span>
+        <span class="key m" aria-hidden="true">Z</span>
+      </button>
     </div>
+
+    <!-- The live region. Always in the document and never display:none, which
+         is what makes a screen reader announce a change to it. The toast above
+         is aria-hidden apart from its button, so each decision is announced
+         exactly once. -->
+    <p class="sr-only" id="deck-announcer" role="status"></p>
+
+    <main>
+      <div class="sec-head" id="browse">
+        <h2 class="sec-title">Everything on the wire</h2>
+        <p class="note quiet">
+          Read in any order. Save what you want to come back to.
+        </p>
+      </div>
+
+      <div id="wire-container">
+        <p class="m quiet wire-loading">Loading the wire...</p>
+      </div>
+    </main>
+
+    <footer class="foot m quiet">
+      <span>Lede</span>
+      <span>Stories &copy; Guardian News &amp; Media</span>
+      <span aria-hidden="true">-30-</span>
+    </footer>
 
     <script type="module" src="/src/pages/wire.ts"></script>
   </body>
