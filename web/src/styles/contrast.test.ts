@@ -49,13 +49,20 @@ const FURNITURE_SELECTORS = [".m"];
 /**
  * Keyframes allowed to animate opacity below the floor.
  *
- * `beat` is the live dot's pulse. It is a graphic, not text, and it is
- * redundant with the word "Live" beside it, so dimming it costs a reader
- * nothing - and prefers-reduced-motion stops it dead. Named rather than
- * exempting @keyframes wholesale, because fading a block of text to 0.25 is a
- * genuine failure and should still break this test.
+ * Named one by one rather than exempting @keyframes wholesale, because fading
+ * a block of text to 0.25 and leaving it there is a genuine failure and should
+ * still break this test. Every entry here is transient, decorative, and gone
+ * entirely under prefers-reduced-motion.
+ *
+ * - `beat` is the live dot's pulse. A graphic, not text, and redundant with
+ *   the word "Live" beside it, so dimming it costs a reader nothing.
+ * - `fly-skip` and `fly-save` fade out the card that was just decided. It is
+ *   an inert, aria-hidden clone leaving the frame; the decision itself has
+ *   already been applied and the next card is already on screen.
+ * - `deal` fades the incoming card in over 180ms. Contrast is a property of
+ *   what a page settles at, and this one settles at full strength.
  */
-const PULSING_KEYFRAMES = ["beat"];
+const EXEMPT_KEYFRAMES = ["beat", "fly-skip", "fly-save", "deal"];
 
 interface Rgb {
   r: number;
@@ -287,7 +294,7 @@ describe("contrast floor", () => {
       // dimmed :disabled button is allowed below the floor. Every other
       // selector is held to it.
       .filter((d) => !d.selector.includes(":disabled"))
-      .filter((d) => !(d.keyframe && PULSING_KEYFRAMES.includes(d.keyframe)))
+      .filter((d) => !(d.keyframe && EXEMPT_KEYFRAMES.includes(d.keyframe)))
       .filter((d) => d.value < OPACITY_FLOOR)
       .map((d) =>
         d.keyframe
