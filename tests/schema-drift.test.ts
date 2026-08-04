@@ -24,25 +24,12 @@
 
 import { describe, it, expect, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
-import { pool } from "../src/db/connection.js";
 import { TONE_PRECEDENCE } from "../src/modules/wire/wire.guardian.js";
+import { STORY_COLUMNS } from "../src/modules/wire/wire.columns.js";
 import { closeDatabase } from "./helpers/db.js";
+import { LEGACY_STORIES, inThrowawaySchema } from "./helpers/schema-sandbox.js";
 
 const schemaSql = readFileSync("db/schema.sql", "utf8");
-
-/** The stories table exactly as it stood before the wire data expansion. */
-const LEGACY_STORIES = `
-  CREATE TABLE stories (
-    id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    external_id   TEXT NOT NULL UNIQUE,
-    title         TEXT NOT NULL,
-    summary       TEXT,
-    url           TEXT NOT NULL,
-    section       TEXT,
-    thumbnail_url TEXT,
-    published_at  TIMESTAMPTZ NOT NULL,
-    fetched_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-  )`;
 
 interface AppliedSchema {
   columns: string[];
@@ -61,14 +48,7 @@ async function applySchemaIn(
   name: "drift_fresh" | "drift_legacy",
   before?: string
 ): Promise<AppliedSchema> {
-  const client = await pool.connect();
-
-  try {
-    await client.query(`DROP SCHEMA IF EXISTS ${name} CASCADE`);
-    await client.query(`CREATE SCHEMA ${name}`);
-    // Unqualified names in db/schema.sql now resolve inside this schema.
-    await client.query(`SET search_path TO ${name}`);
-
+  return inThrowawaySchema(name, async (client) => {
     let seededTone: string | null = null;
 
     if (before) {
@@ -113,10 +93,7 @@ async function applySchemaIn(
       toneLabels: tones.map((row) => row.enumlabel),
       seededTone,
     };
-  } finally {
-    await client.query(`DROP SCHEMA IF EXISTS ${name} CASCADE`);
-    client.release();
-  }
+  });
 }
 
 afterAll(closeDatabase);
@@ -138,33 +115,6 @@ describe("db/schema.sql applied to an existing database", () => {
     ).toEqual([]);
 
     expect(migrated.columns).toEqual(fresh.columns);
-  });
-
-  // Guards the assertion above against passing vacuously: if stories were not
-  // created at all, both column lists would be empty and equal.
-  it("actually adds the widened columns down both paths", async () => {
-    const fresh = await applySchemaIn("drift_fresh");
-    const migrated = await applySchemaIn("drift_legacy", LEGACY_STORIES);
-
-    for (const column of [
-      "standfirst",
-      "byline",
-      "pillar",
-      "tone",
-      "word_count",
-      "star_rating",
-      "image_url",
-      "image_alt",
-      "image_credit",
-    ]) {
-      expect(fresh.columns, `fresh install is missing ${column}`).toContain(
-        column
-      );
-      expect(
-        migrated.columns,
-        `migrated database is missing ${column}`
-      ).toContain(column);
-    }
   });
 
   // The deployed table has rows. Migrating must not drop them, and tone has to
@@ -194,16 +144,44 @@ describe("db/schema.sql applied to an existing database", () => {
     ).toEqual(fromCode);
   });
 
+  // The static half of the health check, and the guard that stops the first
+  // assertion passing vacuously - if stories were never created, both column
+  // lists would be empty and equal, but STORY_COLUMNS would not be a subset.
+  //
+  // /api/health asks a running database whether it has these columns; this
+  // asks db/schema.sql whether it would ever produce them, down both the fresh
+  // and the migrated path. A column added to the wire query but forgotten in
+  // the schema file fails here, at the cheapest possible moment, rather than
+  // as a 42703 in production.
+  it("produces every column the wire query selects, down both paths", async () => {
+    const fresh = await applySchemaIn("drift_fresh");
+    const migrated = await applySchemaIn("drift_legacy", LEGACY_STORIES);
+
+    const missingFresh = STORY_COLUMNS.filter(
+      (column) => !fresh.columns.includes(column)
+    );
+    const missingMigrated = STORY_COLUMNS.filter(
+      (column) => !migrated.columns.includes(column)
+    );
+
+    expect(
+      missingFresh,
+      "STORY_COLUMNS lists columns a fresh install never creates:\n  " +
+        missingFresh.join("\n  ")
+    ).toEqual([]);
+
+    expect(
+      missingMigrated,
+      "STORY_COLUMNS lists columns that no ALTER TABLE adds, so a database " +
+        "that already holds stories will never get them:\n  " +
+        missingMigrated.join("\n  ")
+    ).toEqual([]);
+  });
+
   it("is safe to run twice", async () => {
     const once = await applySchemaIn("drift_legacy", LEGACY_STORIES);
 
-    const client = await pool.connect();
-    let twice: string[];
-
-    try {
-      await client.query("DROP SCHEMA IF EXISTS drift_legacy CASCADE");
-      await client.query("CREATE SCHEMA drift_legacy");
-      await client.query("SET search_path TO drift_legacy");
+    const twice = await inThrowawaySchema("drift_legacy", async (client) => {
       await client.query(LEGACY_STORIES);
       await client.query(schemaSql);
       await client.query(schemaSql);
@@ -213,11 +191,9 @@ describe("db/schema.sql applied to an existing database", () => {
           WHERE table_schema = 'drift_legacy' AND table_name = 'stories'
           ORDER BY column_name`
       );
-      twice = rows.map((row) => row.column_name);
-    } finally {
-      await client.query("DROP SCHEMA IF EXISTS drift_legacy CASCADE");
-      client.release();
-    }
+
+      return rows.map((row) => row.column_name);
+    });
 
     expect(twice).toEqual(once.columns);
   });
