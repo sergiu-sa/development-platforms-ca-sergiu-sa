@@ -10,6 +10,7 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { config } from "./config/env.js";
 import { pool } from "./db/connection.js";
+import { checkWireSchema, isSchemaError } from "./modules/wire/wire.columns.js";
 import { authRoutes } from "./modules/auth/auth.route.js";
 import { wireRoutes } from "./modules/wire/wire.route.js";
 
@@ -61,26 +62,55 @@ app.use(
 // is the deployment shape rather than decoration.
 const api = new Hono();
 
-// Health check endpoint for monitoring
+// Health check. It answers two questions at once: can the database be
+// reached, and does it have the shape /api/wire needs?
+//
+// It used to answer only the first, with SELECT 1, and that gap cost three
+// days of a dead homepage: SELECT 1 succeeds against a database missing every
+// column the wire selects. db/README.md has the full account. Since phase 5
+// there are two hosted databases that can be missing one, so this is worth
+// getting right.
+//
+// One query does both jobs, because a query cannot run without a connection.
+// That matters more than it looks: on Vercel each instance holds a pool of a
+// single connection, so a second round trip here doubles how long a polled
+// public endpoint occupies the one connection real requests are queued behind.
 api.get("/health", async (c) => {
-  try {
-    await pool.query("SELECT 1");
+  const timestamp = new Date().toISOString();
+  const schema = await checkWireSchema(pool);
+
+  if (schema.ok) {
     return c.json({
       status: "healthy",
       database: "connected",
-      timestamp: new Date().toISOString(),
+      schema: "ok",
+      timestamp,
     });
-  } catch (error) {
-    console.error("Health check failed:", error);
-    return c.json(
-      {
-        status: "unhealthy",
-        database: "disconnected",
-        timestamp: new Date().toISOString(),
-      },
-      503
-    );
   }
+
+  // A SQLSTATE means Postgres answered and only the shape was wrong.
+  // Anything else - a Node error code, or none - means we never got that far.
+  const reachable = isSchemaError(schema.code);
+
+  console.error(
+    reachable
+      ? "Health check found an out-of-date schema:"
+      : "Health check could not reach the database:",
+    schema.cause
+  );
+
+  return c.json(
+    reachable
+      ? {
+          status: "degraded",
+          database: "connected",
+          schema: "stale",
+          detail: schema.detail,
+          timestamp,
+        }
+      : { status: "unhealthy", database: "disconnected", timestamp },
+    503
+  );
 });
 
 api.route("/auth", authRoutes);

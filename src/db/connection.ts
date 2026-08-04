@@ -5,31 +5,13 @@
 
 import pg from "pg";
 import { config } from "../config/env.js";
+import { sslForConnection } from "./ssl.js";
 
 const { Pool } = pg;
 
-/**
- * Local Postgres runs without TLS; hosted Postgres (Neon) requires it.
- * Deciding from the URL keeps one code path working in both places.
- *
- * Parses the hostname rather than pattern-matching the whole string, so a
- * password containing "@" or "localhost" cannot flip the decision. Fails
- * closed to TLS on an unparseable URL.
- */
-function sslSetting(): pg.PoolConfig["ssl"] {
-  const localHosts = ["localhost", "127.0.0.1", "::1"];
-
-  try {
-    const { hostname } = new URL(config.databaseUrl);
-    return localHosts.includes(hostname) ? false : { rejectUnauthorized: true };
-  } catch {
-    return { rejectUnauthorized: true };
-  }
-}
-
 const pool = new Pool({
   connectionString: config.databaseUrl,
-  ssl: sslSetting(),
+  ssl: sslForConnection(config.databaseUrl),
   max: config.databasePoolMax,
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,

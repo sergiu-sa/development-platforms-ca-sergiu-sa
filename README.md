@@ -1,14 +1,10 @@
 # Lede
 
-A news wire that readers curate into published briefings. Built with Hono,
-TypeScript, and Postgres.
+A news wire that readers curate into published briefings. Built with Hono, TypeScript, and Postgres.
 
 ## Description
 
-Originally a Development Platforms course assignment — a REST API with user
-registration, login, and article submission. It is now being rebuilt as a
-portfolio project: a live news wire that signed-in users curate into published
-**briefings**.
+Originally a Development Platforms course assignment — a REST API with user registration, login, and article submission. It is now being rebuilt as a portfolio project: a live news wire that signed-in users curate into published **briefings**.
 
 **Tech Stack:**
 
@@ -18,17 +14,14 @@ portfolio project: a live news wire that signed-in users curate into published
 - **Authentication:** JWT
 - **Tests:** Vitest against a real database, with CI on GitHub Actions
 
-> **Status: mid-rebuild.** The `articles` feature has been removed and the
-> briefings feature is not built yet, so the homepage feed is empty by design.
-> Registration, login, and the API all work. The graded course submission is
-> preserved at tag `v1.0-course-submission`.
+> **Status: mid-rebuild.** The `articles` feature has been removed and the > briefings feature is not built yet, so the homepage feed is empty by design.
+> Registration, login, and the API all work. The graded course submission is preserved at tag `v1.0-course-submission`.
 >
 > Design: `docs/superpowers/specs/2026-07-27-briefings-concept-design.md`
 
 ## Live Deployment
 
-None currently. The original Railway deployment has been shut down; Vercel with
-Neon Postgres is the next step.
+None currently. The original Railway deployment has been shut down; Vercel with Neon Postgres is the next step.
 
 ## Setup
 
@@ -62,7 +55,6 @@ Neon Postgres is the next step.
    ```bash
    createdb news_api
    createdb news_api_test
-   psql news_api -f db/schema.sql
    ```
 
 4. **Set up your environment files**
@@ -83,19 +75,29 @@ Neon Postgres is the next step.
    `.env.test` must point at a database whose name ends in `_test` — the suite
    truncates every table and refuses to run otherwise.
 
-5. **Start the server**
+5. **Apply the schema**
+
+   ```bash
+   npm run db:apply -- .env
+   ```
+
+   The test database builds itself. Nothing applies the schema to a hosted database automatically, so see [`db/README.md`](db/README.md) for which databases need this and why it is easy to forget one.
+
+6. **Start the server**
 
    ```bash
    npm run dev
    ```
 
-6. **Check it works**
+7. **Check it works**
 
    ```bash
-   curl localhost:3000/health
+   curl localhost:3000/api/health
    ```
 
-   Expected: `{"status":"healthy","database":"connected",...}`
+   Expected: `{"status":"healthy","database":"connected","schema":"ok",...}`
+
+   `"schema":"ok"` means the database has every column the wire reads. A 503 with `"schema":"stale"` names the column that is missing, which almost always means step 5 has not been run against that database.
 
 ## Scripts
 
@@ -132,9 +134,7 @@ npm run format:check # verify formatting
 }
 ```
 
-`username` is your public display name — 3-30 characters, letters, numbers,
-hyphens and underscores. It is what appears on bylines, so email addresses are
-never exposed publicly. Both email and username are unique case-insensitively.
+`username` is your public display name — 3-30 characters, letters, numbers, hyphens and underscores. It is what appears on bylines, so email addresses are never exposed publicly. Both email and username are unique case-insensitively.
 
 **POST /auth/login** - Login and get a token
 
@@ -150,8 +150,7 @@ Authorization: Bearer your_token_here
 
 ### Not Built Yet
 
-The briefings endpoints (`/wire`, `/briefings`, `/curators/:username`) are
-specified but not implemented. See the design spec.
+The briefings endpoints (`/wire`, `/briefings`, `/curators/:username`) are specified but not implemented. See the design spec.
 
 ## Database
 
@@ -169,12 +168,9 @@ Four tables, defined in `db/schema.sql`:
 Three constraints carry guarantees, each covered by tests in
 `tests/schema.test.ts`:
 
-- `briefing_items.story_id` is `ON DELETE RESTRICT`, so a story referenced by a
-  briefing can never be pruned from the cache
-- `UNIQUE (briefing_id, position)` is `DEFERRABLE`, so items can be reordered
-  inside a transaction
-- `LOWER()` unique indexes on `users.email` and `users.username` — Postgres
-  compares case-sensitively, unlike the MySQL collation this replaced
+- `briefing_items.story_id` is `ON DELETE RESTRICT`, so a story referenced by a briefing can never be pruned from the cache
+- `UNIQUE (briefing_id, position)` is `DEFERRABLE`, so items can be reordered inside a transaction
+- `LOWER()` unique indexes on `users.email` and `users.username` — Postgres compares case-sensitively, unlike the MySQL collation this replaced
 
 ## Testing
 
@@ -182,10 +178,7 @@ Three constraints carry guarantees, each covered by tests in
 npm test
 ```
 
-Tests run against a real Postgres database rather than mocks, driving the app
-through `app.fetch()` so no server is started. They require `.env.test` to point
-at a database whose name ends in `_test`; the suite refuses to run otherwise,
-which is what stops a missing config from wiping your development data.
+Tests run against a real Postgres database rather than mocks, driving the app through `app.fetch()` so no server is started. They require `.env.test` to point at a database whose name ends in `_test`; the suite refuses to run otherwise, which is what stops a missing config from wiping your development data.
 
 ## Project Structure
 
@@ -238,5 +231,4 @@ Although a frontend was not required, I added a simple one to visualise the API 
 
 ## License
 
-Originally a course assignment for the Development Platforms module, now
-continued as a personal project.
+Originally a course assignment for the Development Platforms module, now continued as a personal project.
