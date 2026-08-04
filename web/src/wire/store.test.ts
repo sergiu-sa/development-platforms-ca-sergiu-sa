@@ -33,6 +33,18 @@ describe("persistence", () => {
     });
   });
 
+  it("takes a cleared story back out of the stored session", () => {
+    // Remove has to reach storage, not just the screen. A story dropped from
+    // the desk and still in sessionStorage would walk back onto it on reload,
+    // which is the one bug a reader would never think to look for.
+    const store = createStore(makeStories(20));
+    store.decideCurrent("saved");
+    store.clear(1);
+
+    expect(stored()).toEqual({ v: 1, decisions: {}, dealt: BATCH_SIZE });
+    expect(decisionFor(createStore(makeStories(20)).get(), 1)).toBeNull();
+  });
+
   it("restores a session into a new store", () => {
     const first = createStore(makeStories(20));
     first.decideCurrent("saved");

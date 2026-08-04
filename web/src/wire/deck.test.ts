@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   BATCH_SIZE,
+  clearDecision,
   counts,
   createDeck,
   cursor,
@@ -200,6 +201,55 @@ describe("undo", () => {
     const once = undo(deck);
     expect(undo(once)).toBe(once);
     expect(decisionFor(once, 1)).toBe("saved");
+  });
+});
+
+describe("clearDecision", () => {
+  it("returns a story to undecided", () => {
+    const deck = decide(deckOf(3), 2, "saved");
+    expect(decisionFor(clearDecision(deck, 2), 2)).toBeNull();
+  });
+
+  it("records what it removed, so undo puts it back", () => {
+    // Remove and Un-skip are decisions like any other: the reader gets the
+    // same one step back from the same toast.
+    const saved = decide(deckOf(3), 2, "saved");
+    const cleared = clearDecision(saved, 2);
+
+    expect(cleared.lastAction).toEqual({ storyId: 2, from: "saved", to: null });
+    expect(decisionFor(undo(cleared), 2)).toBe("saved");
+  });
+
+  it("does nothing to a story that was never decided", () => {
+    // The tray and the row can both ask to clear something already clear.
+    // Recording it would overwrite lastAction and spend the reader's one step
+    // of undo on a change that never happened.
+    const deck = decide(deckOf(3), 1, "saved");
+    const again = clearDecision(deck, 2);
+
+    expect(again).toBe(deck);
+    expect(again.lastAction).toEqual({ storyId: 1, from: null, to: "saved" });
+  });
+
+  it("ignores a story that is not on the wire", () => {
+    const deck = deckOf(3);
+    expect(clearDecision(deck, 404)).toBe(deck);
+  });
+
+  it("brings the deck back to the story it cleared", () => {
+    // Un-skipping from the list is the reader saying they want to see it
+    // again, so the cursor has to notice.
+    let deck = deckOf(3);
+    deck = decideCurrent(deck, "skipped");
+    expect(currentStory(deck)?.id).toBe(2);
+
+    expect(currentStory(clearDecision(deck, 1))?.id).toBe(1);
+  });
+
+  it("leaves the original state untouched", () => {
+    const deck = decide(deckOf(3), 1, "saved");
+    clearDecision(deck, 1);
+    expect(decisionFor(deck, 1)).toBe("saved");
   });
 });
 

@@ -11,6 +11,7 @@
  */
 
 import {
+  clearDecision,
   createDeck,
   dealMore,
   decide,
@@ -91,7 +92,7 @@ export function readSession(): Required<RestoredSession> | null {
  * store costs the reader their session on reload and nothing else, so a throw
  * here must not reach the decision that caused it.
  */
-export function writeSession(state: DeckState): void {
+function writeSession(state: DeckState): void {
   const decisions: Record<string, Decision> = {};
   for (const [id, decision] of state.decisions) decisions[id] = decision;
 
@@ -113,6 +114,8 @@ export interface DeckStore {
   subscribe(listener: Listener): () => void;
   decideCurrent(to: Decision): void;
   decide(storyId: number, to: Decision): void;
+  /** Remove on a saved story, Un-skip on a skipped one. */
+  clear(storyId: number): void;
   undo(): void;
   dealMore(): void;
 }
@@ -141,6 +144,7 @@ export function createStore(stories: readonly Story[]): DeckStore {
 
     decideCurrent: (to) => set(decideCurrent(state, to)),
     decide: (storyId, to) => set(decide(state, storyId, to)),
+    clear: (storyId) => set(clearDecision(state, storyId)),
     undo: () => set(undo(state)),
     dealMore: () => set(dealMore(state)),
   };
