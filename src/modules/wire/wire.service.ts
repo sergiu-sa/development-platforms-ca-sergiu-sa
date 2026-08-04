@@ -9,6 +9,7 @@
 
 import { pool } from "../../db/connection.js";
 import { config } from "../../config/env.js";
+import { WIRE_STORY_COLUMNS } from "./wire.columns.js";
 import { fetchGuardianStories } from "./wire.guardian.js";
 import type { StoryTone, WireStory } from "./wire.guardian.js";
 
@@ -231,10 +232,9 @@ export async function getWirePage(options: {
   const offset = (options.page - 1) * WIRE_PAGE_SIZE;
 
   const { rows } = await pool.query<StoryQueryRow>(
-    `SELECT id, title, summary, standfirst, byline, url, section, pillar,
-            tone, word_count, star_rating, thumbnail_url, image_url,
-            image_alt, image_credit, published_at,
-            COUNT(*) OVER () AS total_count
+    // The column list is shared with the health check, so /api/health probes
+    // exactly what this query needs rather than a second list that can drift.
+    `SELECT ${WIRE_STORY_COLUMNS}, COUNT(*) OVER () AS total_count
        FROM stories
       WHERE ($1::text IS NULL OR LOWER(section) = LOWER($1))
       ORDER BY published_at DESC, id DESC
