@@ -811,9 +811,12 @@ button {
 .toast {
   position: fixed;
   left: 1.25rem;
-  /* Clears the decision bar. At 1.25rem it covered Skip, which is the one
-     control a reader is most likely to want next. */
-  bottom: calc(var(--bar-h) + 1.25rem);
+  /* Clears whichever bar is under it. On the deck that is the decision bar -
+     at 1.25rem it covered Skip, the one control a reader is most likely to
+     want next. Below the deck it is the tray, whose height is measured and
+     published by `tray.ts` because it wraps at narrow widths and changes again
+     when the sign-in call to action is present. */
+  bottom: calc(max(var(--bar-h), var(--tray-h, 0px)) + 1rem);
   z-index: 40;
   display: flex;
   align-items: center;
@@ -881,67 +884,150 @@ button {
   text-decoration: underline;
 }
 
-/* ---- the wire list ----
-   Still provisional: phase 4 replaces this with the real browse row, adding
-   per-row actions, the pillar filter, sort and the tray. What it already does
-   is show the deck's decisions, read from the same store, so the page cannot
-   contradict itself. */
+/* ---- the spine ----
+   Sticky, and sitting directly after a 100dvh deck, so it takes over exactly
+   when the deck stops being visible. The saved count is never off-screen,
+   which is the whole reason it exists. */
 
-.wire-list {
+.spine {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0 1.25rem;
+  height: var(--bar-h);
+  background: var(--color-paper);
+  border-bottom: 1px solid var(--color-ink);
+}
+
+.spine .word {
+  font-size: 1.15rem;
+}
+
+/* A fixed-height bar must not wrap - the labels shorten instead, which is
+   what .long/.short do on the button beside this. */
+#spine-count {
+  margin-right: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  min-width: 0;
+}
+
+#spine-deck {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  flex: none;
+}
+
+/* ---- the stale band ----
+   Stale is a timestamp, never an alarm: a quiet band with the last refresh
+   time, above stories that read perfectly well for being an hour old. */
+
+.stale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  background: var(--color-paper-2);
+  padding: 0.7rem 1.25rem;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+/* ---- the controls ---- */
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1.25rem;
+}
+
+.controls-label {
+  margin-right: 0.4rem;
+}
+
+/* Pushes sort and hide-decided to the far end, so the filters read as one
+   group and the view switches as another. Collapses to nothing when the bar
+   wraps, which is what keeps the two groups together at 390. */
+.controls-gap {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* ---- the browse row ---- */
+
+.rows {
   border-top: 1px solid var(--color-ink);
 }
 
-.wire-list a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.wire-list a:hover {
-  text-decoration: underline;
-}
-
-.wire-item {
+.row {
+  display: grid;
+  grid-template-columns: 7.5rem 120px 1fr auto;
+  grid-template-areas: "meta thumb body acts";
+  align-items: start;
+  gap: 0 1.25rem;
   padding: 1.1rem 1.25rem;
   border-bottom: 1px solid var(--color-rule);
 }
 
-.wire-item:hover {
+/* The parts are placed by named area rather than source order, because the row
+   rearranges twice on the way down to 390. A story with no image still leaves
+   its track empty, which keeps every headline in the list on one left edge. */
+
+.row:hover {
   background: var(--color-paper-2);
 }
 
 /* Colour is never the only signal. The edge and the strike-through are the
-   graphic half; the word in .wire-item-state is the other, and each works
-   without the other. */
-.wire-item[data-state="saved"] {
+   graphic half; the word in .row-state is the other, and each works without
+   the other. */
+.row[data-state="saved"] {
   box-shadow: inset 4px 0 0 var(--color-blue);
 }
 
-.wire-item[data-state="saved"] .wire-item-state {
+.row[data-state="saved"] .row-state {
   color: var(--color-blue);
 }
 
-.wire-item[data-state="skipped"] .wire-item-h {
+.row[data-state="skipped"] .row-h {
   text-decoration: line-through;
 }
 
-.wire-item[data-state="skipped"] .wire-item-h,
-.wire-item[data-state="skipped"] .wire-item-t {
+.row[data-state="skipped"] .row-h,
+.row[data-state="skipped"] .row-t {
   opacity: 0.72;
 }
 
-.wire-item[data-state="skipped"] .wire-item-state {
+.row[data-state="skipped"] .row-state {
   color: var(--color-red-ink);
 }
 
-.wire-item-meta {
+.row-meta {
+  grid-area: meta;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1rem;
-  margin-bottom: 0.5rem;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
-.wire-item-h {
+.row-thumb {
+  grid-area: thumb;
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  background: var(--color-paper-3);
+  display: block;
+}
+
+.row-body {
+  grid-area: body;
+  min-width: 0;
+}
+
+.row-h {
   font-size: 21px;
   font-variation-settings:
     "wdth" 92,
@@ -952,27 +1038,38 @@ button {
   margin: 0;
 }
 
-.wire-item-t {
+.row-t {
   font-size: 15px;
   line-height: 1.45;
   margin: 0.4rem 0 0;
   max-width: 62ch;
 }
 
-/* Stale is a timestamp, never an alarm: a quiet band with the last refresh
-   time, above stories that read perfectly well for being an hour old. */
-.wire-stale {
-  background: var(--color-paper-2);
-  padding: 0.7rem 1.25rem;
-  border-bottom: 1px solid var(--color-rule);
+.row-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+  margin: 0.55rem 0 0;
 }
 
-.wire-empty,
+.row-acts {
+  grid-area: acts;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ---- the blank view ----
+   A filter that has hidden everything, which is not the same thing as an
+   empty wire and does not use its words. */
+
+.blank,
 .wire-loading {
   padding: 3rem 1.25rem;
 }
 
-.wire-empty-h {
+.blank-h {
   font-size: clamp(1.75rem, 2.6vw, 2.75rem);
   font-variation-settings:
     "wdth" 85,
@@ -982,11 +1079,65 @@ button {
   margin: 0 0 0.6rem;
 }
 
-.wire-empty-s {
+.blank-line {
   font-size: 17px;
   line-height: 1.5;
-  margin: 0;
+  margin: 0 0 1.25rem;
   max-width: 48ch;
+}
+
+/* ---- the tray ----
+   The running record of the session, pinned to the bottom from the moment
+   anything is saved. Ink rather than paper, because it is the one surface that
+   belongs to the reader rather than to the wire. */
+
+.tray {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 1.25rem;
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.tray-n {
+  white-space: nowrap;
+}
+
+.tray-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  overflow: hidden;
+  flex: 1 1 auto;
+  max-height: 2.2rem;
+}
+
+.tray-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgb(232 233 228 / 0.35);
+}
+
+/* color and text-transform already come from the global button reset. */
+.tray-chip button {
+  text-decoration: underline;
+}
+
+.tray-chip button:hover {
+  opacity: 0.72;
+}
+
+.tray :focus-visible {
+  outline: 2px solid var(--color-paper);
+  outline-offset: 2px;
 }
 
 /* ---- auth pages ----
@@ -1057,6 +1208,26 @@ button {
    how little it costs: the dateline first, then the tick gauge, then the long
    labels shorten. The counts and the decisions never go. */
 
+@media (max-width: 1100px) {
+  /* Four columns stop fitting a real headline. The meta line goes above and
+     the actions below, both full width, so the picture and the copy keep the
+     space they need. */
+  .row {
+    grid-template-columns: 120px 1fr;
+    grid-template-areas:
+      "meta meta"
+      "thumb body"
+      "acts acts";
+    gap: 0.7rem 1.25rem;
+  }
+
+  .row-meta {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
+}
+
 @media (max-width: 900px) {
   .top-mid {
     display: none;
@@ -1124,7 +1295,41 @@ button {
   .toast {
     left: 0.75rem;
     right: 0.75rem;
-    bottom: 0.75rem;
+  }
+
+  /* A fixed-height bar shortens its labels rather than wrapping. The wordmark
+     is already in the deck above, and the wire total is on the deck's own
+     Browse control. */
+  .spine .word,
+  .spine-total,
+  .spine-total + .spine-sep {
+    display: none;
+  }
+
+  .row {
+    grid-template-columns: 88px 1fr;
+    padding: 1rem 1.25rem;
+  }
+
+  .row-thumb {
+    width: 88px;
+    height: 62px;
+  }
+
+  .row-acts {
+    flex-wrap: wrap;
+  }
+
+  .tray {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+  }
+
+  /* The chips are the first thing to go when the tray is tight: the count and
+     the way onward are what the reader needs, and every chip's story is still
+     listed below with its own Remove. */
+  .tray-chips {
+    display: none;
   }
 }
 

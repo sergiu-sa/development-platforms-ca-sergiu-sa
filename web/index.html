@@ -105,12 +105,26 @@
     <p class="sr-only" id="deck-announcer" role="status"></p>
 
     <main>
+      <!-- Sticky, and sitting directly after a 100dvh deck, so it takes over
+           exactly when the deck stops being visible. Nothing has to watch the
+           scroll position for that to be true. -->
+      <header class="spine" id="spine">
+        <a href="/index.html" class="word">Lede<b>.</b></a>
+        <span class="m quiet" id="spine-count"></span>
+        <button class="btn m" id="spine-deck" type="button"></button>
+      </header>
+
+      <!-- A stale wire is a timestamp, never an alarm. Old news reads fine. -->
+      <div class="stale m" id="wire-stale" hidden></div>
+
       <div class="sec-head" id="browse">
         <h2 class="sec-title">Everything on the wire</h2>
         <p class="note quiet">
           Read in any order. Save what you want to come back to.
         </p>
       </div>
+
+      <div class="controls" id="browse-controls"></div>
 
       <div id="wire-container">
         <p class="m quiet wire-loading">Loading the wire...</p>
@@ -122,6 +136,14 @@
       <span>Stories &copy; Guardian News &amp; Media</span>
       <span aria-hidden="true">-30-</span>
     </footer>
+
+    <!-- The running record of the session. Hidden until something is saved,
+         so it never occupies the bottom of an untouched page. -->
+    <div class="tray" id="tray" hidden>
+      <span class="tray-n m"><b id="tray-n">0</b> on your desk</span>
+      <div class="tray-chips" id="tray-chips"></div>
+      <div id="tray-cta"></div>
+    </div>
 
     <script type="module" src="/src/pages/wire.ts"></script>
   </body>
