@@ -11,6 +11,7 @@
     "build:server": "tsc",
     "build:web": "vite build",
     "start": "node dist/server/index.js",
+    "db:apply": "tsx scripts/apply-schema.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.check.json && tsc -p tsconfig.web.json",
