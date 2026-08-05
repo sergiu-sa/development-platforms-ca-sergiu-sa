@@ -250,6 +250,119 @@ describe("briefing_items constraints", () => {
   });
 });
 
+describe("saved_stories constraints", () => {
+  /** One reader with one story decided, returned as ids. */
+  async function seedDesk(
+    state: "saved" | "skipped" = "saved"
+  ): Promise<{ userId: number; storyId: number }> {
+    const { rows: users } = await pool.query<{ id: number }>(
+      `INSERT INTO users (email, username, password_hash)
+       VALUES ('reader@example.com', 'reader', 'hash')
+       RETURNING id`
+    );
+
+    const { rows: stories } = await pool.query<{ id: number }>(
+      `INSERT INTO stories (external_id, title, url, published_at)
+       VALUES ('ext-desk', 'A Story', 'https://example.com/desk', now())
+       RETURNING id`
+    );
+
+    await pool.query(
+      `INSERT INTO saved_stories (user_id, story_id, state)
+       VALUES ($1, $2, $3)`,
+      [users[0].id, stories[0].id, state]
+    );
+
+    return { userId: users[0].id, storyId: stories[0].id };
+  }
+
+  // The constraint the whole concept rests on. Cache cleanup must be
+  // physically incapable of emptying somebody's desk.
+  it("refuses to delete a story someone has saved", async () => {
+    const { storyId } = await seedDesk("saved");
+
+    await expectPgError(
+      pool.query("DELETE FROM stories WHERE id = $1", [storyId]),
+      FOREIGN_KEY_VIOLATION
+    );
+  });
+
+  // Documented rather than desired: a foreign key cannot be conditional on a
+  // column, so RESTRICT covers skipped rows too. Pruning stale stories means
+  // clearing their skipped rows first, and this is where that is written down.
+  it("also refuses to delete a story someone has skipped", async () => {
+    const { storyId } = await seedDesk("skipped");
+
+    await expectPgError(
+      pool.query("DELETE FROM stories WHERE id = $1", [storyId]),
+      FOREIGN_KEY_VIOLATION
+    );
+  });
+
+  it("removes a reader's desk when the reader is deleted", async () => {
+    const { userId } = await seedDesk();
+
+    await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+
+    const { rows } = await pool.query(
+      "SELECT id FROM saved_stories WHERE user_id = $1",
+      [userId]
+    );
+
+    expect(rows).toHaveLength(0);
+  });
+
+  // What makes the write idempotent: one decision per reader per story, so an
+  // upsert has a single row to land on.
+  it("rejects the same story twice on one desk", async () => {
+    const { userId, storyId } = await seedDesk();
+
+    await expectPgError(
+      pool.query(
+        `INSERT INTO saved_stories (user_id, story_id, state)
+         VALUES ($1, $2, 'skipped')`,
+        [userId, storyId]
+      ),
+      UNIQUE_VIOLATION
+    );
+  });
+
+  it("allows the same story on two readers' desks", async () => {
+    const { storyId } = await seedDesk();
+
+    const { rows: users } = await pool.query<{ id: number }>(
+      `INSERT INTO users (email, username, password_hash)
+       VALUES ('second@example.com', 'second', 'hash')
+       RETURNING id`
+    );
+
+    await pool.query(
+      `INSERT INTO saved_stories (user_id, story_id, state)
+       VALUES ($1, $2, 'skipped')`,
+      [users[0].id, storyId]
+    );
+
+    const { rows } = await pool.query(
+      "SELECT id FROM saved_stories WHERE story_id = $1",
+      [storyId]
+    );
+
+    expect(rows).toHaveLength(2);
+  });
+
+  it("rejects a state outside the enum", async () => {
+    const { userId } = await seedDesk();
+
+    await expectPgError(
+      pool.query(
+        "UPDATE saved_stories SET state = 'filed' WHERE user_id = $1",
+        [userId]
+      ),
+      INVALID_ENUM_VALUE
+    );
+  });
+});
+
 describe("briefings constraints", () => {
   it("defaults new briefings to draft", async () => {
     const { briefingId } = await seedBriefingWithTwoStories();
