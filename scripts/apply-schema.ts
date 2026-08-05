@@ -22,7 +22,9 @@ import { pathToFileURL } from "node:url";
 import dotenv from "dotenv";
 import pg from "pg";
 import { sslForConnection } from "../src/db/ssl.js";
-import { checkWireSchema } from "../src/modules/wire/wire.columns.js";
+import { checkSchema } from "../src/db/schema-probe.js";
+import { WIRE_PROBE } from "../src/modules/wire/wire.columns.js";
+import { DESK_PROBE } from "../src/modules/desk/desk.columns.js";
 
 export interface Target {
   url: string;
@@ -105,15 +107,59 @@ export function redactUrl(url: string): string {
   }
 }
 
-/** The columns stories currently has, so before and after can be compared. */
-async function storyColumns(runner: pg.Pool): Promise<string[]> {
-  const { rows } = await runner.query<{ column_name: string }>(
-    `SELECT column_name FROM information_schema.columns
-      WHERE table_name = 'stories' AND table_schema = current_schema()
-      ORDER BY column_name`
+/**
+ * Every table and column currently present, so before and after can be
+ * compared.
+ *
+ * Reported per table rather than for `stories` alone. The first version
+ * counted stories columns and nothing else, so the run that created the whole
+ * saved_stories table printed "added nothing, this database was already up to
+ * date" - which is the one sentence an operator must be able to trust, since
+ * it is the only feedback the step gives.
+ */
+async function schemaShape(runner: pg.Pool): Promise<Map<string, string[]>> {
+  const { rows } = await runner.query<{
+    table_name: string;
+    column_name: string;
+  }>(
+    `SELECT table_name, column_name FROM information_schema.columns
+      WHERE table_schema = current_schema()
+      ORDER BY table_name, column_name`
   );
 
-  return rows.map((row) => row.column_name);
+  const shape = new Map<string, string[]>();
+  for (const row of rows) {
+    const columns = shape.get(row.table_name) ?? [];
+    columns.push(row.column_name);
+    shape.set(row.table_name, columns);
+  }
+
+  return shape;
+}
+
+/** What the apply changed, as lines to print. */
+export function describeChanges(
+  before: Map<string, string[]>,
+  after: Map<string, string[]>
+): string[] {
+  const lines: string[] = [];
+
+  for (const [table, columns] of after) {
+    if (!before.has(table)) {
+      lines.push(`created ${table} (${columns.length} columns)`);
+      continue;
+    }
+
+    const added = columns.filter(
+      (column) => !(before.get(table) ?? []).includes(column)
+    );
+
+    if (added.length > 0) {
+      lines.push(`altered ${table}: added ${added.join(", ")}`);
+    }
+  }
+
+  return lines;
 }
 
 async function main(): Promise<void> {
@@ -132,29 +178,31 @@ async function main(): Promise<void> {
   console.log(`  to      ${redactUrl(target.url)}`);
 
   try {
-    const before = await storyColumns(pool);
+    const before = await schemaShape(pool);
     await pool.query(schemaSql);
-    const after = await storyColumns(pool);
+    const after = await schemaShape(pool);
 
-    const added = after.filter((column) => !before.includes(column));
+    const changes = describeChanges(before, after);
 
-    console.log(`  stories ${after.length} columns`);
-    console.log(
-      added.length > 0
-        ? `  added   ${added.join(", ")}`
-        : "  added   nothing, this database was already up to date"
-    );
+    console.log(`  tables  ${after.size}`);
 
-    // The same probe /api/health runs, so "the script succeeded" and "the endpoint will work" are the same claim rather than two hopeful ones.
-    const check = await checkWireSchema(pool);
+    if (changes.length === 0) {
+      console.log("  changed nothing, this database was already up to date");
+    } else {
+      for (const line of changes) console.log(`  ${line}`);
+    }
+
+    // The same probe /api/health runs, so "the script succeeded" and "the
+    // endpoints will work" are the same claim rather than two hopeful ones.
+    const check = await checkSchema(pool, [WIRE_PROBE, DESK_PROBE]);
 
     if (!check.ok) {
       throw new Error(
-        `Schema applied, but /api/wire still cannot read stories: ${check.detail}`
+        `Schema applied, but the database is still the wrong shape: ${check.detail}`
       );
     }
 
-    console.log("  wire    every column the wire depends on is present");
+    console.log("  checked every column the wire and the desk depend on");
   } finally {
     await pool.end();
   }

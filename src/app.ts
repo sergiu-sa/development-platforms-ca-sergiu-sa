@@ -10,8 +10,11 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { config } from "./config/env.js";
 import { pool } from "./db/connection.js";
-import { checkWireSchema, isSchemaError } from "./modules/wire/wire.columns.js";
+import { checkSchema, isSchemaError } from "./db/schema-probe.js";
+import { WIRE_PROBE } from "./modules/wire/wire.columns.js";
+import { DESK_PROBE } from "./modules/desk/desk.columns.js";
 import { authRoutes } from "./modules/auth/auth.route.js";
+import { deskRoutes } from "./modules/desk/desk.route.js";
 import { wireRoutes } from "./modules/wire/wire.route.js";
 
 const app = new Hono();
@@ -77,7 +80,11 @@ const api = new Hono();
 // public endpoint occupies the one connection real requests are queued behind.
 api.get("/health", async (c) => {
   const timestamp = new Date().toISOString();
-  const schema = await checkWireSchema(pool);
+  // Every table the API writes to, not just the wire's. A probe that covers
+  // one feature answers "ok" for a database the rest of the app cannot use,
+  // and the desk is the case that proves it: its writes are swallowed by
+  // design, so a missing saved_stories is invisible from the outside.
+  const schema = await checkSchema(pool, [WIRE_PROBE, DESK_PROBE]);
 
   if (schema.ok) {
     return c.json({
@@ -115,6 +122,7 @@ api.get("/health", async (c) => {
 
 api.route("/auth", authRoutes);
 api.route("/wire", wireRoutes);
+api.route("/desk", deskRoutes);
 
 // CORS - only for the API routes, and only for origins we explicitly name.
 // The bundled frontend is same-origin, so it needs no CORS headers; this exists
