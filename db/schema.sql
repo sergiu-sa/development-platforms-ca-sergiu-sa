@@ -118,6 +118,48 @@ CREATE TABLE IF NOT EXISTS wire_sync (
   CONSTRAINT wire_sync_singleton CHECK (id)
 );
 
+-- What a reader has done with a story on the deck. An enum rather than text
+-- for the same reason story_tone is one: the frontend understands exactly two
+-- states, so a third should not be storable.
+--
+-- Its own DO block, per the rule above.
+DO $$ BEGIN
+  CREATE TYPE story_decision AS ENUM ('saved', 'skipped');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+-- The desk: every decision a reader has made, saved and skipped alike.
+--
+-- Skips are stored, not just saves. Without them, signing in on a second
+-- device re-deals every story the reader has already dismissed, which is the
+-- one thing the deck exists to avoid.
+--
+-- No index beyond the unique constraint. UNIQUE (user_id, story_id) builds a
+-- btree with user_id leading, so "everything on my desk" already has one.
+CREATE TABLE IF NOT EXISTS saved_stories (
+  id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  -- RESTRICT for the same reason briefing_items uses it: a story on somebody's
+  -- desk must be impossible to prune from the cache.
+  --
+  -- A foreign key cannot be conditional on a column value, so this pins
+  -- skipped stories exactly as hard as saved ones - and skips are the common
+  -- case, since the deck offers every story and most get skipped. One reader
+  -- working through the wire therefore pins very nearly all of it.
+  --
+  -- So pruning stale stories is not "delete the old rows"; it is "delete the
+  -- skipped rows for every user, then delete the stories". Worth knowing
+  -- before anyone writes that DELETE and reads the failure as a bug.
+  story_id   INTEGER NOT NULL REFERENCES stories(id) ON DELETE RESTRICT,
+  state      story_decision NOT NULL,
+  -- decided_at rather than saved_at: a skipped row was never saved, and the
+  -- desk orders by this column.
+  decided_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+  CONSTRAINT saved_stories_unique_story UNIQUE (user_id, story_id)
+);
+
 CREATE TABLE IF NOT EXISTS briefings (
   id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   author_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
