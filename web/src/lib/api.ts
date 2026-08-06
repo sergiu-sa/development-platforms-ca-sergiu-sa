@@ -46,6 +46,17 @@ export function safeNext(next: string | null): string {
 function handleExpiredSession() {
   localStorage.removeItem("token");
 
+  // Everything this tab remembers goes with the token, for exactly the reason
+  // logout() clears it: this lands the reader on the sign-in form, and whoever
+  // signs in there next has their session folded onto their desk. Without this
+  // an expired token is the open door that logout closed - person A's reading
+  // filed onto person B's account, and disclosed to them.
+  try {
+    sessionStorage.clear();
+  } catch {
+    /* nothing to protect if the store is unavailable */
+  }
+
   const returnTo = encodeURIComponent(
     window.location.pathname + window.location.search
   );
@@ -53,7 +64,24 @@ function handleExpiredSession() {
   window.location.href = `/login.html?expired=1&next=${returnTo}`;
 }
 
-async function apiRequest(endpoint: string, options: RequestInit = {}) {
+export interface ApiResult {
+  /**
+   * The HTTP status, or 0 when the request never got an answer.
+   *
+   * Most callers only care whether the body says success. The desk's
+   * background sync needs more than that: it has to tell "the server refused
+   * this" from "we could not reach the server", because the first must never
+   * be retried and the second must be. A 404 retried forever would poison the
+   * queue behind it.
+   */
+  status: number;
+  body: any;
+}
+
+async function request(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<ApiResult> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined),
@@ -77,18 +105,28 @@ async function apiRequest(endpoint: string, options: RequestInit = {}) {
     if (response.status === 401 && token && !endpoint.startsWith("/auth/")) {
       handleExpiredSession();
       return {
-        success: false,
-        message: "Your session has expired. Please sign in again.",
+        status: response.status,
+        body: {
+          success: false,
+          message: "Your session has expired. Please sign in again.",
+        },
       };
     }
 
     // Must be awaited here, not returned as a pending promise. Without the
     // await, a non-JSON body (a 404 page, a proxy error, a gateway timeout)
     // rejects outside this try/catch and the caller never sees a result.
-    return await response.json();
+    return { status: response.status, body: await response.json() };
   } catch (error) {
-    return { success: false, message: "Network error. Please try again." };
+    return {
+      status: 0,
+      body: { success: false, message: "Network error. Please try again." },
+    };
   }
+}
+
+async function apiRequest(endpoint: string, options: RequestInit = {}) {
+  return (await request(endpoint, options)).body;
 }
 
 export async function getWire({
@@ -101,6 +139,42 @@ export async function getWire({
 
   const query = params.toString();
   return apiRequest(`/wire${query ? `?${query}` : ""}`);
+}
+
+/**
+ * Everything the signed-in reader has decided, saved and skipped alike.
+ *
+ * `compact` because this builds a storyId-to-state map and never looks at a
+ * story body. The full form carries one per decision, and the desk grows with
+ * every card triaged rather than every card kept, so asking for it here would
+ * make the homepage slower for exactly the readers who use the site most.
+ */
+export async function getDesk() {
+  return apiRequest("/desk?view=compact");
+}
+
+export async function putDeskDecision(
+  storyId: number,
+  state: "saved" | "skipped"
+): Promise<ApiResult> {
+  return request(`/desk/${storyId}`, {
+    method: "PUT",
+    body: JSON.stringify({ state }),
+  });
+}
+
+export async function deleteDeskDecision(storyId: number): Promise<ApiResult> {
+  return request(`/desk/${storyId}`, { method: "DELETE" });
+}
+
+/** Folds a signed-out session into the account, in one request. */
+export async function mergeDesk(
+  entries: { storyId: number; state: "saved" | "skipped" }[]
+) {
+  return apiRequest("/desk", {
+    method: "PUT",
+    body: JSON.stringify({ entries }),
+  });
 }
 
 export async function login(email: string, password: string) {

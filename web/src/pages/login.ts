@@ -1,6 +1,7 @@
 import "../styles/app.css";
 import { login, safeNext } from "../lib/api";
 import { setToken, isLoggedIn, updateNavigation } from "../lib/auth";
+import { migrateSessionToAccount } from "../wire/sync";
 
 function initLogin(): void {
   updateNavigation();
@@ -49,6 +50,25 @@ function initLogin(): void {
 
     if (response.success) {
       setToken(response.token);
+
+      // Anything triaged while signed out belongs to the reader who just
+      // proved who they are, so it goes onto their desk before they land back
+      // on the wire.
+      //
+      // Bounded, because this sits in front of the redirect. A cold function
+      // and a cold database can both be slow at once, and `fetch` has no
+      // timeout of its own, so an unbounded await leaves the button reading
+      // "Signing in..." for as long as the request takes - while the token is
+      // already stored and the reader is, in fact, signed in.
+      //
+      // Giving up on the wait does not give up on the migration: the pending
+      // flag is raised before the attempt and only lowered once the server
+      // confirms, so the homepage finishes the job on arrival.
+      await Promise.race([
+        migrateSessionToAccount(),
+        new Promise((resolve) => setTimeout(resolve, 2500)),
+      ]);
+
       // Only a same-origin path is honoured, so ?next= cannot be used to
       // bounce someone to another site after they sign in.
       window.location.href = safeNext(params.get("next"));
