@@ -120,8 +120,25 @@ export interface DeckStore {
   dealMore(): void;
 }
 
-export function createStore(stories: readonly Story[]): DeckStore {
-  let state = createDeck(stories, readSession());
+/**
+ * `accountDecisions` is what the signed-in reader's desk says, and it replaces
+ * the session's decisions rather than merging with them: the account is the
+ * truth once there is one, and merging would let a stale local session
+ * resurrect something removed on another device.
+ *
+ * `dealt` still comes from the session either way. How much of today's wire
+ * this tab has asked to see is a property of the tab, not of the reader.
+ */
+export function createStore(
+  stories: readonly Story[],
+  accountDecisions?: ReadonlyMap<number, Decision> | null
+): DeckStore {
+  const session = readSession();
+  const restored = accountDecisions
+    ? { decisions: accountDecisions, dealt: session?.dealt ?? 0 }
+    : session;
+
+  let state = createDeck(stories, restored);
   const listeners = new Set<Listener>();
 
   // The pure functions hand back the identical state for a no-op, so an

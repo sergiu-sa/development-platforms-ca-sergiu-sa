@@ -12,7 +12,9 @@ import { get } from "./helpers/request.js";
 import { createSchema, closeDatabase } from "./helpers/db.js";
 import { LEGACY_STORIES, inThrowawaySchema } from "./helpers/schema-sandbox.js";
 import { pool } from "../src/db/connection.js";
-import { checkWireSchema } from "../src/modules/wire/wire.columns.js";
+import { checkSchema } from "../src/db/schema-probe.js";
+import { WIRE_PROBE } from "../src/modules/wire/wire.columns.js";
+import { DESK_PROBE } from "../src/modules/desk/desk.columns.js";
 
 beforeAll(createSchema);
 afterAll(closeDatabase);
@@ -31,7 +33,7 @@ describe("GET /api/health", () => {
 
 describe("the wire schema probe", () => {
   it("passes against a database built from db/schema.sql", async () => {
-    const check = await checkWireSchema(pool);
+    const check = await checkSchema(pool, [WIRE_PROBE, DESK_PROBE]);
 
     expect(check.ok).toBe(true);
     expect(check.detail).toBeUndefined();
@@ -42,7 +44,7 @@ describe("the wire schema probe", () => {
   it("names the missing column when the table predates the wire expansion", async () => {
     const check = await inThrowawaySchema("probe_legacy", async (client) => {
       await client.query(LEGACY_STORIES);
-      return checkWireSchema(client);
+      return checkSchema(client, [WIRE_PROBE, DESK_PROBE]);
     });
 
     expect(check.ok).toBe(false);
@@ -54,7 +56,7 @@ describe("the wire schema probe", () => {
   // phase 5 newly makes possible, because it adds a database.
   it("reports a missing table when the schema was never applied at all", async () => {
     const check = await inThrowawaySchema("probe_empty", (client) =>
-      checkWireSchema(client)
+      checkSchema(client, [WIRE_PROBE, DESK_PROBE])
     );
 
     expect(check.ok).toBe(false);
@@ -72,11 +74,47 @@ describe("the wire schema probe", () => {
         "CREATE TABLE stories AS SELECT * FROM public.stories WHERE false"
       );
       await client.query("ALTER TABLE stories DROP COLUMN fetched_at");
-      return checkWireSchema(client);
+      return checkSchema(client, [WIRE_PROBE, DESK_PROBE]);
     });
 
     expect(check.ok).toBe(false);
     expect(check.code).toBe("42703");
     expect(check.detail).toMatch(/fetched_at/);
+  });
+
+  // The reason the probe stopped being wire-only. A deployment that never got
+  // phase 6's table serves a working homepage: the deck deals, every decision
+  // repaints, and the writes fail into a sync that swallows failures by
+  // design. Nothing on screen, nothing in the response, and - until this case
+  // existed - "schema":"ok" from the endpoint whose whole job is to say
+  // otherwise.
+  it("reports a missing saved_stories even when stories is perfect", async () => {
+    const check = await inThrowawaySchema("probe_desk", async (client) => {
+      await client.query(
+        "CREATE TABLE stories AS SELECT * FROM public.stories WHERE false"
+      );
+      return checkSchema(client, [WIRE_PROBE, DESK_PROBE]);
+    });
+
+    expect(check.ok).toBe(false);
+    expect(check.code).toBe("42P01");
+    expect(check.detail).toMatch(/saved_stories/);
+  });
+
+  it("reports a saved_stories that is the wrong shape", async () => {
+    const check = await inThrowawaySchema("probe_desk_thin", async (client) => {
+      await client.query(
+        "CREATE TABLE stories AS SELECT * FROM public.stories WHERE false"
+      );
+      await client.query(
+        "CREATE TABLE saved_stories AS SELECT * FROM public.saved_stories WHERE false"
+      );
+      await client.query("ALTER TABLE saved_stories DROP COLUMN decided_at");
+      return checkSchema(client, [WIRE_PROBE, DESK_PROBE]);
+    });
+
+    expect(check.ok).toBe(false);
+    expect(check.code).toBe("42703");
+    expect(check.detail).toMatch(/decided_at/);
   });
 });

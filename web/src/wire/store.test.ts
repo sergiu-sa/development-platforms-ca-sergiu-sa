@@ -10,6 +10,7 @@ import {
   BATCH_SIZE,
 } from "./deck";
 import { makeStories } from "./story.fixture";
+import type { Decision } from "./types";
 
 const stored = () => JSON.parse(window.sessionStorage.getItem(STORAGE_KEY)!);
 
@@ -255,5 +256,75 @@ describe("subscribers", () => {
     store.decideCurrent("saved");
 
     expect(seen).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The account overriding the session is the mechanism the whole phase rests
+ * on, and it shipped with no test at all: replacing the body of createStore
+ * with `const restored = session` left every web test green. In production
+ * that means a signed-in reader on a second device gets every story they have
+ * already triaged dealt to them again, which is the one thing the deck exists
+ * to prevent.
+ */
+describe("createStore with a desk", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
+
+  function storeSession(decisions: Record<number, Decision>, dealt = 16): void {
+    window.sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ v: 1, decisions, dealt })
+    );
+  }
+
+  const account = (entries: [number, Decision][]) =>
+    new Map<number, Decision>(entries);
+
+  it("takes the account's decision over the session's for the same story", () => {
+    storeSession({ 1: "saved" });
+
+    const state = createStore(makeStories(20), account([[1, "skipped"]])).get();
+
+    expect(decisionFor(state, 1)).toBe("skipped");
+  });
+
+  // The account is the truth once there is one. Merging instead would let a
+  // stale local session resurrect something removed on another device.
+  it("drops a session decision the account does not have", () => {
+    storeSession({ 1: "saved", 2: "saved" });
+
+    const state = createStore(makeStories(20), account([[2, "saved"]])).get();
+
+    expect(decisionFor(state, 1)).toBeNull();
+    expect(decisionFor(state, 2)).toBe("saved");
+  });
+
+  // How much of today's wire this tab has asked to see is a property of the
+  // tab, not of the reader, so it survives even when the decisions do not.
+  it("keeps dealt from the session", () => {
+    storeSession({ 1: "saved" }, 16);
+
+    const state = createStore(makeStories(20), account([[1, "saved"]])).get();
+
+    expect(state.dealt).toBe(16);
+  });
+
+  it("falls back to the session when there is no account to read", () => {
+    storeSession({ 1: "saved" });
+
+    const state = createStore(makeStories(20), null).get();
+
+    expect(decisionFor(state, 1)).toBe("saved");
+  });
+
+  // An empty desk is a real answer and must not be confused with not asking.
+  it("treats an empty account as an empty desk, not a missing one", () => {
+    storeSession({ 1: "saved" });
+
+    const state = createStore(makeStories(20), account([])).get();
+
+    expect(decisionFor(state, 1)).toBeNull();
   });
 });

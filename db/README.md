@@ -29,6 +29,10 @@ npm run db:apply -- .env.preview
 
 `.env*` is gitignored. The script refuses to run without an explicit target: a default would let a mistyped command re-apply to your laptop while reporting success, which looks identical to having updated the remote database.
 
+## A new table needs no `ALTER`; a new column does
+
+`CREATE TABLE IF NOT EXISTS` does create a brand new table on every database, so a phase that adds a table just applies the file. The rule below is about columns added to a table that already exists somewhere, which is a different thing and the one that has actually gone wrong.
+
 ## Adding a column means writing it twice
 
 `CREATE TABLE IF NOT EXISTS` leaves an existing table completely untouched, so a database that already holds rows is only ever reached by `ALTER TABLE … ADD COLUMN IF NOT EXISTS`. Put every new column in **both** the table definition and an `ALTER`.
@@ -46,4 +50,6 @@ That includes the columns the wire _writes_ but never shows you. A database miss
 {"status":"healthy","database":"connected","schema":"ok"}
 ```
 
-A `503` with `"schema":"stale"` names the column that is missing. Check it against every deployment after any change to this file.
+A `503` with `"schema":"stale"` names the table or column that is missing. Check it against every deployment after any change to this file.
+
+**The probe covers every table the API writes to, not just `stories`.** That is load-bearing rather than tidy. The desk writes in the background and swallows its failures on purpose, so a database missing `saved_stories` serves a homepage that looks completely normal: stories deal, every Skip and Save repaints, and nothing is saved. A probe that only asked about `stories` would answer `"schema":"ok"` throughout, which would turn the instruction above into a false pass. Any future table an endpoint depends on belongs in a probe beside `WIRE_PROBE` and `DESK_PROBE`, or this check quietly stops meaning anything.

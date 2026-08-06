@@ -26,23 +26,51 @@ import { describe, it, expect, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { TONE_PRECEDENCE } from "../src/modules/wire/wire.guardian.js";
 import { STORY_COLUMNS } from "../src/modules/wire/wire.columns.js";
+import { DECISIONS } from "../src/modules/desk/desk.schema.js";
 import { closeDatabase } from "./helpers/db.js";
-import { LEGACY_STORIES, inThrowawaySchema } from "./helpers/schema-sandbox.js";
+import {
+  DEPLOYED_AT_PHASE_6,
+  DEPLOYED_AT_PHASE_6_COLUMNS,
+  inThrowawaySchema,
+} from "./helpers/schema-sandbox.js";
 
 const schemaSql = readFileSync("db/schema.sql", "utf8");
 
+/**
+ * Tables the two paths are compared across.
+ *
+ * stories is here because it has actually gained columns since being deployed.
+ * saved_stories is here because it is the next table an API writes to, so it
+ * is the next one that will.
+ */
+const TRACKED_TABLES = ["stories", "saved_stories"] as const;
+
+type TrackedTable = (typeof TRACKED_TABLES)[number];
+
+/**
+ * Enums whose labels are also written down in TypeScript.
+ *
+ * Each of these is a set that cannot be collapsed into one declaration,
+ * because one half lives in Postgres and the other in code. The cases below
+ * are what stop the two halves drifting.
+ */
+const TRACKED_ENUMS = ["story_tone", "story_decision"] as const;
+
+type TrackedEnum = (typeof TRACKED_ENUMS)[number];
+
 interface AppliedSchema {
-  columns: string[];
-  /** The labels of the story_tone enum, sorted. */
-  toneLabels: string[];
+  /** Column names per tracked table, sorted. */
+  columns: Record<TrackedTable, string[]>;
+  /** Labels per tracked enum, sorted. */
+  enumLabels: Record<TrackedEnum, string[]>;
   /** The tone of the row seeded before migrating, if one was seeded. */
   seededTone: string | null;
 }
 
 /**
  * Applies db/schema.sql inside a throwaway Postgres schema and reports the
- * columns stories ends up with. `before` runs first, so a caller can stand up
- * the old table and exercise the migration path.
+ * columns each tracked table ends up with. `before` runs first, so a caller
+ * can stand up the old tables and exercise the migration path.
  */
 async function applySchemaIn(
   name: "drift_fresh" | "drift_legacy",
@@ -69,58 +97,118 @@ async function applySchemaIn(
       seededTone = rows[0]?.tone ?? null;
     }
 
-    const { rows } = await client.query<{ column_name: string }>(
-      `SELECT column_name FROM information_schema.columns
-        WHERE table_schema = $1 AND table_name = 'stories'
-        ORDER BY column_name`,
-      [name]
+    const { rows } = await client.query<{
+      table_name: TrackedTable;
+      column_name: string;
+    }>(
+      `SELECT table_name, column_name FROM information_schema.columns
+        WHERE table_schema = $1 AND table_name = ANY($2)
+        ORDER BY table_name, column_name`,
+      [name, [...TRACKED_TABLES]]
     );
+
+    const columns = Object.fromEntries(
+      TRACKED_TABLES.map((table) => [
+        table,
+        rows
+          .filter((row) => row.table_name === table)
+          .map((row) => row.column_name),
+      ])
+    ) as Record<TrackedTable, string[]>;
 
     // Sorted by label rather than by enum position: the order Postgres stores
     // them in carries no meaning here, only which labels exist.
-    const { rows: tones } = await client.query<{ enumlabel: string }>(
-      `SELECT e.enumlabel
+    const { rows: labels } = await client.query<{
+      typname: TrackedEnum;
+      enumlabel: string;
+    }>(
+      `SELECT t.typname, e.enumlabel
          FROM pg_type t
          JOIN pg_namespace n ON n.oid = t.typnamespace
          JOIN pg_enum e ON e.enumtypid = t.oid
-        WHERE t.typname = 'story_tone' AND n.nspname = $1
-        ORDER BY e.enumlabel`,
-      [name]
+        WHERE t.typname = ANY($2) AND n.nspname = $1
+        ORDER BY t.typname, e.enumlabel`,
+      [name, [...TRACKED_ENUMS]]
     );
 
-    return {
-      columns: rows.map((row) => row.column_name),
-      toneLabels: tones.map((row) => row.enumlabel),
-      seededTone,
-    };
+    const enumLabels = Object.fromEntries(
+      TRACKED_ENUMS.map((type) => [
+        type,
+        labels
+          .filter((row) => row.typname === type)
+          .map((row) => row.enumlabel),
+      ])
+    ) as Record<TrackedEnum, string[]>;
+
+    return { columns, enumLabels, seededTone };
   });
 }
 
 afterAll(closeDatabase);
 
 describe("db/schema.sql applied to an existing database", () => {
-  it("reaches the same stories columns as a fresh install", async () => {
-    const fresh = await applySchemaIn("drift_fresh");
-    const migrated = await applySchemaIn("drift_legacy", LEGACY_STORIES);
+  // One case per tracked table rather than one loop over both, so a failure
+  // names the table in its title instead of only in the diff.
+  for (const table of TRACKED_TABLES) {
+    it(`reaches the same ${table} columns as a fresh install`, async () => {
+      const fresh = await applySchemaIn("drift_fresh");
+      const migrated = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_6);
 
-    const missing = fresh.columns.filter(
-      (column) => !migrated.columns.includes(column)
-    );
+      const missing = fresh.columns[table].filter(
+        (column) => !migrated.columns[table].includes(column)
+      );
+
+      expect(
+        missing,
+        `These ${table} columns are in the CREATE TABLE block but no ALTER ` +
+          "TABLE adds them, so a database that already holds rows will never " +
+          "get them:\n  " +
+          missing.join("\n  ")
+      ).toEqual([]);
+
+      expect(migrated.columns[table]).toEqual(fresh.columns[table]);
+
+      // Guards against both sides passing vacuously: a table that was never
+      // created would give two empty, equal lists.
+      expect(fresh.columns[table].length).toBeGreaterThan(0);
+    });
+  }
+
+  // The snapshot the whole convergence check rests on. Editing it is the wrong
+  // way to silence a drift failure, because it disarms the guard permanently
+  // rather than fixing the schema - so an edit has to break something loud.
+  it("keeps the deployed snapshot frozen", async () => {
+    const migrated = await inThrowawaySchema("drift_frozen", async (client) => {
+      await client.query(DEPLOYED_AT_PHASE_6);
+
+      const { rows } = await client.query<{
+        table_name: string;
+        columns: string;
+      }>(
+        `SELECT table_name, count(*)::text AS columns
+           FROM information_schema.columns
+          WHERE table_schema = 'drift_frozen'
+          GROUP BY table_name`
+      );
+
+      return Object.fromEntries(
+        rows.map((row) => [row.table_name, Number(row.columns)])
+      );
+    });
 
     expect(
-      missing,
-      "These columns are in the CREATE TABLE block but no ALTER TABLE adds " +
-        "them, so a database that already holds stories will never get them:\n  " +
-        missing.join("\n  ")
-    ).toEqual([]);
-
-    expect(migrated.columns).toEqual(fresh.columns);
+      migrated,
+      "DEPLOYED_AT_PHASE_6 in tests/helpers/schema-sandbox.ts is a frozen " +
+        "record of what production looked like when phase 6 shipped. If you " +
+        "changed it to make a drift failure go away, that failure was real: " +
+        "write the ALTER TABLE instead."
+    ).toEqual(DEPLOYED_AT_PHASE_6_COLUMNS);
   });
 
   // The deployed table has rows. Migrating must not drop them, and tone has to
   // land on its default rather than null against a NOT NULL column.
   it("keeps existing rows and defaults their tone", async () => {
-    const migrated = await applySchemaIn("drift_legacy", LEGACY_STORIES);
+    const migrated = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_6);
 
     expect(migrated.seededTone).toBe("news");
   });
@@ -135,12 +223,29 @@ describe("db/schema.sql applied to an existing database", () => {
     const fromCode = [...TONE_PRECEDENCE].sort();
 
     expect(
-      fresh.toneLabels,
+      fresh.enumLabels.story_tone,
       "The story_tone enum in db/schema.sql and TONE_PRECEDENCE in " +
         "src/modules/wire/wire.guardian.ts have drifted apart. Both must " +
         "list the same tones:\n" +
-        `    schema.sql:  ${fresh.toneLabels.join(", ")}\n` +
+        `    schema.sql:  ${fresh.enumLabels.story_tone.join(", ")}\n` +
         `    wire client: ${fromCode.join(", ")}`
+    ).toEqual(fromCode);
+  });
+
+  // The same pair, one table along. A decision the API accepts but the enum
+  // does not have makes every write of it fail - louder than the tone version,
+  // which fails inside a swallowed refresh, but just as avoidable.
+  it("declares exactly the decisions the desk accepts", async () => {
+    const fresh = await applySchemaIn("drift_fresh");
+    const fromCode = [...DECISIONS].sort();
+
+    expect(
+      fresh.enumLabels.story_decision,
+      "The story_decision enum in db/schema.sql and DECISIONS in " +
+        "src/modules/desk/desk.schema.ts have drifted apart. Both must list " +
+        "the same states:\n" +
+        `    schema.sql:  ${fresh.enumLabels.story_decision.join(", ")}\n` +
+        `    desk schema: ${fromCode.join(", ")}`
     ).toEqual(fromCode);
   });
 
@@ -155,13 +260,13 @@ describe("db/schema.sql applied to an existing database", () => {
   // as a 42703 in production.
   it("produces every column the wire query selects, down both paths", async () => {
     const fresh = await applySchemaIn("drift_fresh");
-    const migrated = await applySchemaIn("drift_legacy", LEGACY_STORIES);
+    const migrated = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_6);
 
     const missingFresh = STORY_COLUMNS.filter(
-      (column) => !fresh.columns.includes(column)
+      (column) => !fresh.columns.stories.includes(column)
     );
     const missingMigrated = STORY_COLUMNS.filter(
-      (column) => !migrated.columns.includes(column)
+      (column) => !migrated.columns.stories.includes(column)
     );
 
     expect(
@@ -179,22 +284,32 @@ describe("db/schema.sql applied to an existing database", () => {
   });
 
   it("is safe to run twice", async () => {
-    const once = await applySchemaIn("drift_legacy", LEGACY_STORIES);
+    const once = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_6);
 
     const twice = await inThrowawaySchema("drift_legacy", async (client) => {
-      await client.query(LEGACY_STORIES);
+      await client.query(DEPLOYED_AT_PHASE_6);
       await client.query(schemaSql);
       await client.query(schemaSql);
 
-      const { rows } = await client.query<{ column_name: string }>(
-        `SELECT column_name FROM information_schema.columns
-          WHERE table_schema = 'drift_legacy' AND table_name = 'stories'
-          ORDER BY column_name`
+      const { rows } = await client.query<{
+        table_name: TrackedTable;
+        column_name: string;
+      }>(
+        `SELECT table_name, column_name FROM information_schema.columns
+          WHERE table_schema = 'drift_legacy' AND table_name = ANY($1)
+          ORDER BY table_name, column_name`,
+        [[...TRACKED_TABLES]]
       );
 
-      return rows.map((row) => row.column_name);
+      return rows;
     });
 
-    expect(twice).toEqual(once.columns);
+    for (const table of TRACKED_TABLES) {
+      expect(
+        twice
+          .filter((row) => row.table_name === table)
+          .map((row) => row.column_name)
+      ).toEqual(once.columns[table]);
+    }
   });
 });

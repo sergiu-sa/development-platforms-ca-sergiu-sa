@@ -203,7 +203,15 @@ async function refreshIfNeeded(): Promise<void> {
   }
 }
 
-interface StoryQueryRow {
+/**
+ * A stories row as Postgres returns it, for the columns in STORY_COLUMNS.
+ *
+ * Exported because the desk selects the same list - it returns whole stories,
+ * not just the ids of the ones a reader kept - and a second copy of this shape
+ * plus a second mapper would be free to drift from the column list they both
+ * come from.
+ */
+export interface StoryColumnsRow {
   id: number;
   title: string;
   summary: string | null;
@@ -220,7 +228,32 @@ interface StoryQueryRow {
   image_alt: string | null;
   image_credit: string | null;
   published_at: Date;
+}
+
+interface StoryQueryRow extends StoryColumnsRow {
   total_count: string;
+}
+
+/** snake_case out of Postgres to the camelCase the API and frontend speak. */
+export function toWireStory(row: StoryColumnsRow): WireStoryRow {
+  return {
+    id: row.id,
+    title: row.title,
+    summary: row.summary,
+    standfirst: row.standfirst,
+    byline: row.byline,
+    url: row.url,
+    section: row.section,
+    pillar: row.pillar,
+    tone: row.tone,
+    wordCount: row.word_count,
+    starRating: row.star_rating,
+    thumbnailUrl: row.thumbnail_url,
+    imageUrl: row.image_url,
+    imageAlt: row.image_alt,
+    imageCredit: row.image_credit,
+    publishedAt: row.published_at.toISOString(),
+  };
 }
 
 export async function getWirePage(options: {
@@ -246,24 +279,7 @@ export async function getWirePage(options: {
   const state = await readSyncState();
 
   return {
-    stories: rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      summary: row.summary,
-      standfirst: row.standfirst,
-      byline: row.byline,
-      url: row.url,
-      section: row.section,
-      pillar: row.pillar,
-      tone: row.tone,
-      wordCount: row.word_count,
-      starRating: row.star_rating,
-      thumbnailUrl: row.thumbnail_url,
-      imageUrl: row.image_url,
-      imageAlt: row.image_alt,
-      imageCredit: row.image_credit,
-      publishedAt: row.published_at.toISOString(),
-    })),
+    stories: rows.map(toWireStory),
     // COUNT() comes back as a bigint, which pg hands over as a string.
     total: rows.length > 0 ? Number(rows[0].total_count) : 0,
     stale: !state.is_fresh,
