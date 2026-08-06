@@ -33,6 +33,49 @@ export const LEGACY_STORIES = `
   )`;
 
 /**
+ * The deployed databases as they stood when phase 6 shipped, before
+ * db/schema.sql is applied over them: the pre-expansion stories table, plus
+ * saved_stories and the two things it depends on.
+ *
+ * **Never add a column to this.** It is a frozen historical record, not a
+ * mirror of the current schema, and its whole value is that it cannot move.
+ * The convergence test compares it against a fresh install, so a column added
+ * to a CREATE TABLE block with no matching ALTER shows up as a difference. A
+ * developer who hits that failure has two ways to make it green: write the
+ * ALTER, which is correct, or add the column here, which turns the guard off
+ * permanently for that table and reproduces the phase 1 outage exactly.
+ *
+ * The name says a date for that reason. The next snapshot, if one is ever
+ * needed, is a new constant beside this one rather than an edit to it.
+ * `assertFrozen` below is what stops a quiet edit going unnoticed.
+ */
+export const DEPLOYED_AT_PHASE_6 = [
+  LEGACY_STORIES,
+
+  `CREATE TABLE users (
+    id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email         VARCHAR(255) NOT NULL,
+    username      VARCHAR(50)  NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
+  )`,
+
+  `DO $$ BEGIN
+    CREATE TYPE story_decision AS ENUM ('saved', 'skipped');
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END $$`,
+
+  `CREATE TABLE saved_stories (
+    id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    story_id   INTEGER NOT NULL REFERENCES stories(id) ON DELETE RESTRICT,
+    state      story_decision NOT NULL,
+    decided_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT saved_stories_unique_story UNIQUE (user_id, story_id)
+  )`,
+].join(";\n");
+
+/**
  * Runs `body` against a client whose search_path points at an empty schema
  * named `name`, then drops it.
  *
@@ -59,3 +102,17 @@ export async function inThrowawaySchema<T>(
     client.release();
   }
 }
+
+/**
+ * The column counts the snapshot above is pinned at.
+ *
+ * A second lock on the same door. Editing the snapshot to silence a drift
+ * failure now breaks this instead, which puts a deliberate decision in front
+ * of anyone about to disarm the guard - and this line is the one place that
+ * says out loud what the frozen shape is.
+ */
+export const DEPLOYED_AT_PHASE_6_COLUMNS = {
+  stories: 9,
+  users: 5,
+  saved_stories: 5,
+} as const;
