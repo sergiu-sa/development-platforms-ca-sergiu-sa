@@ -60,6 +60,34 @@ export async function post(
   return toApiResponse(response);
 }
 
+export async function put(
+  path: string,
+  body: unknown,
+  token?: string
+): Promise<ApiResponse> {
+  const response = await app.fetch(
+    new Request(`http://localhost${path}`, {
+      method: "PUT",
+      headers: buildHeaders(token),
+      body: JSON.stringify(body),
+    })
+  );
+
+  return toApiResponse(response);
+}
+
+/** `delete` is a reserved word, hence the shortened name. */
+export async function del(path: string, token?: string): Promise<ApiResponse> {
+  const response = await app.fetch(
+    new Request(`http://localhost${path}`, {
+      method: "DELETE",
+      headers: buildHeaders(token),
+    })
+  );
+
+  return toApiResponse(response);
+}
+
 /** Registers a user and returns their login token plus id. */
 export async function registerAndLogin(
   email: string,
