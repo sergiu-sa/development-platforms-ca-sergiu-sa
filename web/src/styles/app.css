@@ -1,24 +1,20 @@
 @import "tailwindcss";
 
 /* Bricolage imports standard.css, NOT wdth.css.
-   Fontsource ships one file per axis combination, and the entry decides which
-   axes reach the browser at all - a font-variation-settings value for an axis
-   the file does not carry is ignored in silence, with no error anywhere. This
-   was measured rather than assumed (rendered widths at each axis extreme):
+   Fontsource ships one file per axis combination, and the entry decides which axes reach the browser at all;
+   a font-variation-settings value for an axis the file does not carry is ignored in silence, with no error anywhere.
+   This was measured rather than assumed (rendered widths at each axis extreme):
 
      wght.css      wght only
      wdth.css      wght + wdth,  opsz DEAD
      opsz.css      wght + opsz,  wdth DEAD
      standard.css  wght + wdth + opsz
 
-   The type scale runs from 12px furniture to the 8rem -30-, so opsz is load
-   bearing and standard.css is the only entry that carries it alongside wdth.
-   Importing wdth.css AND opsz.css does not work: same family, same weight
-   range, same stretch range, so the second @font-face simply replaces the
-   first. Latin subset costs 132 KB against wdth.css's 78 KB.
+   The type scale runs from 12px furniture to the 8rem -30-, so opsz is load bearing and standard.css is the only entry that carries it alongside wdth.
+   Importing wdth.css AND opsz.css does not work: same family, same weight range, same stretch range, so the second @font-face simply replaces the first.
+   Latin subset costs 132 KB against wdth.css's 78 KB.
 
-   Martian Mono has no opsz axis and its wdth.css is byte-identical to its
-   standard.css, so wdth.css is the correct entry there. */
+   Martian Mono has no opsz axis and its wdth.css is byte-identical to its standard.css, so wdth.css is the correct entry there. */
 @import "@fontsource-variable/bricolage-grotesque/standard.css";
 @import "@fontsource-variable/martian-mono/wdth.css";
 
@@ -31,42 +27,35 @@
   --color-paper-3: #d4d5cd;
   --color-ink: #0b0b0c;
 
-  /* Two accents, and they are a semantic system rather than decoration: red is
-     the machine's time (live, now, on deck, skipped), blue is the reader's hand
-     (saved, chosen, filed, and every focus ring). Nothing else is ever
-     coloured.
+  /* Two accents, and they are a semantic system rather than decoration: red is the machine's time (live, now, on deck, skipped), blue is the reader's hand (saved, chosen, filed, and every focus ring).
+  Nothing else is ever coloured.
 
-     Red is split in two because #ff3b00 measures 2.93:1 on paper - it fails AA
-     for text and fails even the 3:1 non-text threshold. The design guarantees
-     red WORDS exist, because colour is never allowed to be the only signal, so
-     one token could not serve both jobs:
+     Red is split in two because #ff3b00 measures 2.93:1 on paper;
+     it fails AA for text and fails even the 3:1 non-text threshold.
+     The design guarantees red WORDS exist, because colour is never allowed to be the only signal, so one token could not serve both jobs:
 
        --color-red      filled marks that stand alone and carry no glyph
        --color-red-ink  every red glyph, and every red fill sitting under text
 
-     red-ink is hue-locked to red (13.9 degrees, 100% saturation) so it reads as
-     the same ink deepened rather than as a second colour. It measures 5.09:1 on
-     paper and 4.63:1 on paper-2, which is the harder ground and the one that
-     decided the value. styles/contrast.test.ts holds the line, and asserts that
-     --color-red never appears in a color: declaration. */
+     red-ink is hue-locked to red (13.9 degrees, 100% saturation) so it reads as the same ink deepened rather than as a second colour. It measures 5.09:1 on paper and 4.63:1 on paper-2, which is the harder ground and the one that decided the value.
+     styles/contrast.test.ts holds the line, and asserts that --color-red never appears in a color: declaration. */
   --color-red: #ff3b00;
   --color-red-ink: #b82b00;
   --color-blue: #0026ff;
 
   --color-rule: rgb(11 11 12 / 0.22);
 
-  /* The machine reports in mono, the wire is drawn in grotesque. Fraunces is
-     the third role - the curator's voice - and is deliberately NOT loaded until
-     /b/:slug exists in phase 9, because it costs ~81 KB and nothing before that
+  /* The machine reports in mono, the wire is drawn in grotesque.
+  Fraunces is the third role;
+  the curator's voice - and is deliberately NOT loaded until /b/:slug exists in phase 9, because it costs ~81 KB and nothing before that
      page uses it. */
   --font-grot:
     "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Martian Mono Variable", ui-monospace, SFMono-Regular, monospace;
 }
 
-/* Layout constants rather than design tokens, so they stay out of @theme and
-   generate no utilities. The rails and the two fixed bars are referred to from
-   several rules and shrink together at narrow widths. */
+/* Layout constants rather than design tokens, so they stay out of @theme and generate no utilities.
+The rails and the two fixed bars are referred to from several rules and shrink together at narrow widths. */
 :root {
   --rail-w: 4.5rem;
   --bar-h: 3.25rem;
@@ -78,8 +67,8 @@
   box-sizing: border-box;
 }
 
-/* The deck's escape hatch is an anchor to the browse list, so the jump is
-   worth easing. Turned off again under prefers-reduced-motion below. */
+/* The deck's escape hatch is an anchor to the browse list, so the jump is worth easing.
+Turned off again under prefers-reduced-motion below. */
 html {
   scroll-behavior: smooth;
 }
@@ -92,8 +81,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Focus is always visible, and it is always blue: choosing where you are is
-   the reader's hand, the same as saving. */
+/* Focus is always visible, and it is always blue: choosing where you are is the reader's hand, the same as saving. */
 :focus-visible {
   outline: 2px solid var(--color-blue);
   outline-offset: 2px;
@@ -101,9 +89,8 @@ body {
 
 /* ---- primitives ---- */
 
-/* Furniture: every label, slug, timestamp, button, byline and status. Set in
-   one class so the floor cannot be undercut in a one-off rule. 12px is the
-   floor for anything at all - see contrast.test.ts. */
+/* Furniture: every label, slug, timestamp, button, byline and status.
+Set in one class so the floor cannot be undercut in a one-off rule. 12px is the floor for anything at all - see contrast.test.ts. */
 .m {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -115,21 +102,19 @@ body {
   line-height: 1;
 }
 
-/* The dimmest any text on this site is allowed to go, and only for genuinely
-   secondary text. Ink at .72 measures 7.37:1 on paper and 7.01:1 on paper-2.
+/* The dimmest any text on this site is allowed to go, and only for genuinely secondary text. Ink at .72 measures 7.37:1 on paper and 7.01:1 on paper-2.
    Never stack it with anything. */
 .quiet {
   opacity: 0.72;
 }
 
 /* A secondary SENTENCE, as opposed to a label.
-   `.m` is 12px, which is the floor for furniture - labels, slugs, timestamps,
-   buttons, status. Anything read as prose has a 15px floor instead, and three
-   explanatory sentences were wearing `.m` because it was the nearest thing to
-   hand. Reach for this when the text is a sentence, `.m` when it is a tag.
-   Note that contrast.test.ts cannot catch the difference: it reads font-size
+   `.m` is 12px, which is the floor for furniture - labels, slugs, timestamps, buttons, status.
+   Anything read as prose has a 15px floor instead, and three explanatory sentences were wearing `.m` because it was the nearest thing to hand.
+   Reach for this when the text is a sentence, `.m` when it is a tag.
    declarations out of this file and has no way to know which markup wears
-   which class. */
+   Note that contrast.test.ts cannot catch the difference:
+   it reads font-size which class. */
 .note {
   font-size: 15px;
   line-height: 1.45;
@@ -137,19 +122,16 @@ body {
   max-width: 52ch;
 }
 
-/* Visually hidden text uses Tailwind's own `sr-only` utility. The design spec
-   calls this primitive `.sr` and the prototype defines one, but writing it by
-   hand here reimplements a utility the framework already ships - and less
-   completely: `sr-only` also zeroes padding, margin and border-width, so a
-   padded or bordered child still takes no space. Use `sr-only` in markup. */
+/* Visually hidden text uses Tailwind's own `sr-only` utility.
+The design spec calls this primitive `.sr` and the prototype defines one, but writing it by hand here reimplements a utility the framework already ships;
+and less completely: `sr-only` also zeroes padding, margin and border-width, so a padded or bordered child still takes no space.
+Use `sr-only` in markup. */
 
-/* Live is the one thing on the page allowed to move on its own, because the
-   story itself is still moving. Driven by the tone/minutebyminute tag, never by
-   looking for "- live" in the headline.
+/* Live is the one thing on the page allowed to move on its own, because the story itself is still moving.
+Driven by the tone minutebyminute tag, never by looking for "- live" in the headline.
 
-   The dot takes currentColor rather than --color-red: the dot and the word are
-   one signal, so they are one colour. A hot dot beside a deep word reads as an
-   inconsistency, not as an indicator lamp - checked at real size. */
+   The dot takes currentColor rather than --color-red: the dot and the word are one signal, so they are one colour.
+   A hot dot beside a deep word reads as an inconsistency, not as an indicator lamp - checked at real size. */
 .live {
   display: inline-flex;
   align-items: center;
@@ -172,9 +154,8 @@ body {
   }
 }
 
-/* The wordmark: the one place the two faces meet. Its full stop is red - the
-   machine's mark on the masthead - and red-ink rather than red because a full
-   stop is a glyph. */
+/* The wordmark: the one place the two faces meet.
+Its full stop is red - the machine's mark on the masthead - and red-ink rather than red because a full stop is a glyph. */
 .word {
   font-size: 1.5rem;
   font-variation-settings:
@@ -191,8 +172,8 @@ body {
   font-weight: inherit;
 }
 
-/* A star rating drawn as filled squares. The row is a graphic and carries
-   aria-hidden; the rating reaches a screen reader as .sr text beside it. */
+/* A star rating drawn as filled squares.
+The row is a graphic and carries aria-hidden; the rating reaches a screen reader as .sr text beside it. */
 .stars {
   display: inline-flex;
   gap: 3px;
@@ -216,12 +197,9 @@ button {
   background: none;
   border: 0;
   cursor: pointer;
-  /* Tailwind's preflight carries normalize's `button { text-transform: none }`,
-     which stops .m's uppercase at any button that inherits it rather than
-     carrying the class itself. Left alone, the one button in a row of furniture
-     renders mixed case - "Logout" beside "HOME" - and every control phase 3
-     builds inside a .m bar would do the same. Restoring inheritance makes a
-     button behave like every other element. */
+  /* Tailwind's preflight carries normalize's `button { text-transform: none }`, which stops .m's uppercase at any button that inherits it rather than carrying the class itself.
+  Left alone, the one button in a row of furniture renders mixed case - "Logout" beside "HOME" - and every control phase 3 builds inside a .m bar would do the same.
+  Restoring inheritance makes a button behave like every other element. */
   text-transform: inherit;
 }
 
@@ -250,9 +228,7 @@ button {
   border-color: var(--color-ink);
 }
 
-/* WCAG 1.4.3 exempts inactive controls from the contrast minimum, which is why
-   this is the one opacity below the .72 floor. contrast.test.ts skips
-   :disabled selectors explicitly rather than the floor being quietly lowered. */
+/* WCAG 1.4.3 exempts inactive controls from the contrast minimum, which is why this is the one opacity below the .72 floor. contrast.test.ts skips :disabled selectors explicitly rather than the floor being quietly lowered. */
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -294,17 +270,24 @@ button {
   color: var(--color-paper);
 }
 
-/* red-ink rather than red: paper-coloured text sits on this fill. */
-.mini-skip:hover {
+/* red-ink rather than red: paper-coloured text sits on this fill.
+
+   The desk's Remove shares this hover, which is a deliberate departure from theb rowse row;
+   there, Remove and Un-skip carry no tint, because they are the withdrawal of a decision rather than a third and fourth one.
+   The desk earns the warning:
+   the row's Remove is one keystroke from being undone, and the desk has no undo at all, so its Remove is the only irreversible control in
+   the product. */
+.mini-skip:hover,
+.mini-remove:hover {
   background: var(--color-red-ink);
   border-color: var(--color-red-ink);
   color: var(--color-paper);
 }
 
 /* ---- the deck ----
-   One story, a photograph at real size, and two decisions. Full viewport and
-   it never scrolls internally: the browse list starts below the fold, and the
-   escape hatch to it sits between the two decisions rather than under them. */
+   One story, a photograph at real size, and two decisions.
+   Full viewport and it never scrolls internally:
+   the browse list starts below the fold, and the escape hatch to it sits between the two decisions rather than under them. */
 
 .deck {
   display: grid;
@@ -312,8 +295,7 @@ button {
   height: 100dvh;
 }
 
-/* The rails thread each decision's slug onto a spindle, so the screen becomes
-   a record of the session rather than a score. */
+/* The rails thread each decision's slug onto a spindle, so the screen becomes a record of the session rather than a score. */
 .rail {
   display: flex;
   flex-direction: column;
@@ -354,10 +336,10 @@ button {
   margin-bottom: 1rem;
 }
 
-/* The thread. One pixel wide on purpose: the slugs hang off it and overflow it
-   in both directions, which is what makes it read as a spindle rather than a
-   column. Clipping happens on .rail, never here - `overflow: hidden` on a 1px
-   box cuts every slug down to a dash. */
+/* The thread.
+One pixel wide on purpose:
+the slugs hang off it and overflow i in both directions, which is what makes it read as a spindle rather than a column.
+Clipping happens on .rail, never here - `overflow: hidden` on a 1px box cuts every slug down to a dash. */
 .spindle {
   flex: 1;
   width: 1px;
@@ -370,8 +352,8 @@ button {
 }
 
 /* Sets no font-size: it carries .m, so the size is the 12px furniture floor.
-   The prototype's rail slugs were 10px, under the binding minimum. The paper
-   background is what stops the spindle's thread running through the letters. */
+   The prototype's rail slugs were 10px, under the binding minimum.
+   The paper background is what stops the spindle's thread running through the letters. */
 .slug {
   writing-mode: vertical-rl;
   letter-spacing: 0.1em;
@@ -437,8 +419,7 @@ button {
   border-color: var(--color-ink);
 }
 
-/* The one place --color-red is used as itself: a filled mark carrying no
-   glyph, marking where the machine is now. */
+/* The one place --color-red is used as itself: a filled mark carrying no glyph, marking where the machine is now. */
 .tick.now {
   background: var(--color-red);
   border-color: var(--color-red);
@@ -451,10 +432,10 @@ button {
   white-space: nowrap;
 }
 
-/* Clips the card that has just been decided as it flies out. Absolutely
-   positioned children painting over the browse list below was a real bug once;
-   the clip is what makes it structurally impossible. The margin is for the
-   card's stacked-paper shadow, which reaches 14px past its own edge. */
+/* Clips the card that has just been decided as it flies out.
+Absolutely positioned children painting over the browse list below was a real bug once;
+the clip is what makes it structurally impossible.
+The margin is for the card's stacked-paper shadow, which reaches 14px past its own edge. */
 .card-wrap {
   position: relative;
   min-height: 0;
@@ -470,9 +451,8 @@ button {
   min-height: 0;
   background: var(--color-paper);
   border: 1px solid var(--color-rule);
-  /* The two cards still to come, drawn as shadow rather than as elements: a
-     shadow cannot escape its own box, and there is nothing to keep in sync
-     with how many stories are actually left. */
+  /* The two cards still to come, drawn as shadow rather than as elements:
+   a shadow cannot escape its own box, and there is nothing to keep in sync with how many stories are actually left. */
   box-shadow:
     7px 7px 0 -1px var(--color-paper),
     7px 7px 0 0 var(--color-rule),
@@ -480,8 +460,8 @@ button {
     14px 14px 0 0 var(--color-rule);
 }
 
-/* Rows stored before phase 1 have no image. The copy takes the whole card
-   rather than leaving a grey rectangle where a photograph should be. */
+/* Rows stored before phase 1 have no image.
+The copy takes the whole card rather than leaving a grey rectangle where a photograph should be. */
 .card[data-shot="none"] {
   grid-template-columns: 1fr;
 }
@@ -516,9 +496,8 @@ button {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  /* `safe` keeps the top of a long story reachable instead of centring it out
-     of the scrollable area. Dropped by browsers that do not know it, which
-     leaves plain centring. */
+  /* `safe` keeps the top of a long story reachable instead of centring it out of the scrollable area.
+  Dropped by browsers that do not know it, which leaves plain centring. */
   justify-content: safe center;
   padding: 3.4rem 2rem 1.6rem 1.9rem;
   min-width: 0;
@@ -535,8 +514,7 @@ button {
   gap: 1rem;
 }
 
-/* Red on the slug alone. The pillar beside it is .quiet ink - dimming red
-   would composite it to 3.2:1. */
+/* Red on the slug alone. The pillar beside it is .quiet ink - dimming red would composite it to 3.2:1. */
 .slugline-id {
   color: var(--color-red-ink);
 }
@@ -571,8 +549,9 @@ button {
   max-width: 44ch;
 }
 
-/* The byline is the one piece of Guardian metadata that names a person, and it
-   often carries a dateline - "Greg Wood at Goodwood". Worth its own line. */
+/* The byline is the one piece of Guardian metadata that names a person, and it often carries a dateline;
+"Greg Wood at Goodwood".
+Worth its own line. */
 .byline {
   margin: 1.1rem 0 0;
   display: flex;
@@ -598,9 +577,9 @@ button {
   border-bottom-color: var(--color-ink);
 }
 
-/* A comment piece is the writer's, not the desk's, so the writer leads and the
-   headline follows at reduced size and weight. Same tokens and same fields as
-   every other card - only the order changes, and the tone tag decides. */
+/* A comment piece is the writer's, not the desk's, so the writer leads and the headline follows at reduced size and weight.
+Same tokens and same fields as every other card;
+ only the order changes, and the tone tag decides. */
 .writer {
   display: none;
 }
@@ -628,10 +607,8 @@ button {
   border-top: 1px solid var(--color-rule);
 }
 
-/* A feature is a longer read, so its standfirst gets the full measure rather
-   than the 44ch a news trail is held to. Without this the variant resolves
-   correctly and then draws identically to News, which is the whole variant
-   doing nothing. */
+/* A feature is a longer read, so its standfirst gets the full measure rather than the 44ch a news trail is held to.
+Without this the variant resolves correctly and then draws identically to News, which is the whole variant doing nothing. */
 .card[data-variant="feature"] .stand {
   max-width: 58ch;
 }
@@ -647,8 +624,8 @@ button {
   padding: 0 3rem;
 }
 
-/* Shared with .sec-title below: the panel's heading and the browse section's
-   heading are the same voice at the same size, and were identical rules. */
+/* Shared with .sec-title below:
+the panel's heading and the browse section's heading are the same voice at the same size, and were identical rules. */
 .deck-panel-h,
 .sec-title {
   font-size: clamp(1.75rem, 2.6vw, 2.75rem);
@@ -671,8 +648,9 @@ button {
   max-width: 48ch;
 }
 
-/* The wire's sign-off for end of story. Two places only: here, when there is
-   genuinely nothing more, and the footer. */
+/* The wire's sign-off for end of story.
+Two places only:
+here, when there is genuinely nothing more, and the footer. */
 .thirty {
   margin: 0 0 1.3rem;
   font-size: clamp(3.5rem, 7vw, 8rem);
@@ -708,9 +686,7 @@ button {
   transition: background 0.1s;
 }
 
-/* The three controls differ only in which fill they take, so the hover is one
-   rule and each control names its own colour. --color-red-ink rather than
-   --color-red: paper-coloured text sits on this fill. */
+/* The three controls differ only in which fill they take, so the hover is one rule and each control names its own colour. --color-red-ink rather than --color-red: paper-coloured text sits on this fill. */
 .act:hover {
   background: var(--act-fill);
   color: var(--color-paper);
@@ -754,8 +730,8 @@ button {
 }
 
 /* ---- the flight ----
-   No lock. The decision lands in the store immediately and the next card is
-   already drawn; this is a clone of the one just decided, on its way out. */
+   No lock. The decision lands in the store immediately and the next card is already drawn;
+   this is a clone of the one just decided, on its way out. */
 
 .card.leaving {
   position: absolute;
@@ -784,12 +760,10 @@ button {
   }
 }
 
-/* Scoped to .leaving so these outrank .card.dealt on specificity rather than
-   on source order. A clone inherits the class list of the card it copies, and
-   `animation` is a shorthand, so an equal-specificity .card.dealt declared
-   later would win and play the entrance animation on a card that is leaving.
-   deck-view.ts strips `dealt` from the clone as well; this is the half that
-   cannot be undone by someone reordering the file. */
+/* Scoped to .leaving so these outrank .card.dealt on specificity rather than on source order.
+A clone inherits the class list of the card it copies, and `animation` is a shorthand, so an equal-specificity .card.dealt declared later would win and play the entrance animation on a card that is leaving.
+deck-view.ts strips `dealt` from the clone as well;
+this is the half that cannot be undone by someone reordering the file. */
 .card.leaving.go-skip {
   animation: fly-skip 0.26s cubic-bezier(0.5, 0, 0.9, 0.4) forwards;
 }
@@ -805,17 +779,15 @@ button {
 /* ---- the toast ----
    Undo, and the label that keeps Z from being an unannounced shortcut. */
 
-/* Hidden by the `hidden` attribute, which Tailwind's preflight already turns
-   into `display: none !important` - so this needs no [hidden] rule of its own,
-   the same way .acts does not. */
+/* Hidden by the `hidden` attribute, which Tailwind's preflight already turns into `display:
+none !important` - so this needs no [hidden] rule of its own, the same way .acts does not. */
 .toast {
   position: fixed;
   left: 1.25rem;
-  /* Clears whichever bar is under it. On the deck that is the decision bar -
-     at 1.25rem it covered Skip, the one control a reader is most likely to
-     want next. Below the deck it is the tray, whose height is measured and
-     published by `tray.ts` because it wraps at narrow widths and changes again
-     when the sign-in call to action is present. */
+  /* Clears whichever bar is under it.
+  On the deck that is the decision bar;
+   at 1.25rem it covered Skip, the one control a reader is most likely to want next.
+   Below the deck it is the tray, whose height is measured and published by `tray.ts` because it wraps at narrow widths and changes again when the sign-in call to action is present. */
   bottom: calc(max(var(--bar-h), var(--tray-h, 0px)) + 1rem);
   z-index: 40;
   display: flex;
@@ -885,29 +857,35 @@ button {
 }
 
 /* ---- the spine ----
-   Sticky, and sitting directly after a 100dvh deck, so it takes over exactly
-   when the deck stops being visible. The saved count is never off-screen,
-   which is the whole reason it exists. */
+   Sticky, and sitting directly after a 100dvh deck, so it takes over exactly when the deck stops being visible.
+   The saved count is never off-screen, which is the whole reason it exists. */
 
-.spine {
-  position: sticky;
-  top: 0;
-  z-index: 30;
+.spine,
+.deskbar {
   display: flex;
   align-items: center;
   gap: 1.25rem;
   padding: 0 1.25rem;
   height: var(--bar-h);
-  background: var(--color-paper);
-  border-bottom: 1px solid var(--color-ink);
 }
 
+/* The spine shrinks its wordmark because it is a sticky strip competing with the page scrolling under it.
+The desk's bar is not sticky and has room, so its wordmark stays at full size ;
+the desk is a masthead page, and a shrunken wordmark on it read as a leftover from the other layout. */
 .spine .word {
   font-size: 1.15rem;
 }
 
-/* A fixed-height bar must not wrap - the labels shorten instead, which is
-   what .long/.short do on the button beside this. */
+.spine {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--color-paper);
+  border-bottom: 1px solid var(--color-ink);
+}
+
+/* A fixed-height bar must not wrap;
+the labels shorten instead, which is  what .long/.short do on the button beside this. */
 #spine-count {
   margin-right: auto;
   white-space: nowrap;
@@ -915,7 +893,11 @@ button {
   min-width: 0;
 }
 
-#spine-deck {
+/* Neither may wrap: the bar is a fixed height, so a control that can shrink breaks its label instead.
+  #spine-desk needs this as much as its neighbour;
+  is the third item in the row and the first one flex will squeeze. */
+#spine-deck,
+#spine-desk {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -924,8 +906,8 @@ button {
 }
 
 /* ---- the stale band ----
-   Stale is a timestamp, never an alarm: a quiet band with the last refresh
-   time, above stories that read perfectly well for being an hour old. */
+   Stale is a timestamp, never an alarm:
+   a quiet band with the last refresh time, above stories that read perfectly well for being an hour old. */
 
 .stale {
   display: flex;
@@ -950,9 +932,8 @@ button {
   margin-right: 0.4rem;
 }
 
-/* Pushes sort and hide-decided to the far end, so the filters read as one
-   group and the view switches as another. Collapses to nothing when the bar
-   wraps, which is what keeps the two groups together at 390. */
+/* Pushes sort and hide-decided to the far end, so the filters read as one  group and the view switches as another.
+Collapses to nothing when the bar wraps, which is what keeps the two groups together at 390. */
 .controls-gap {
   flex: 1 1 0;
   min-width: 0;
@@ -974,16 +955,15 @@ button {
   border-bottom: 1px solid var(--color-rule);
 }
 
-/* The parts are placed by named area rather than source order, because the row
-   rearranges twice on the way down to 390. A story with no image still leaves
-   its track empty, which keeps every headline in the list on one left edge. */
+/* The parts are placed by named area rather than source order, because the row rearranges twice on the way down to 390.
+A story with no image still leaves its track empty, which keeps every headline in the list on one left edge. */
 
 .row:hover {
   background: var(--color-paper-2);
 }
 
-/* Colour is never the only signal. The edge and the strike-through are the
-   graphic half; the word in .row-state is the other, and each works without
+/* Colour is never the only signal.
+The edge and the strike-through are the graphic half; the word in .row-state is the other, and each works without
    the other. */
 .row[data-state="saved"] {
   box-shadow: inset 4px 0 0 var(--color-blue);
@@ -1061,8 +1041,7 @@ button {
 }
 
 /* ---- the blank view ----
-   A filter that has hidden everything, which is not the same thing as an
-   empty wire and does not use its words. */
+   A filter that has hidden everything, which is not the same thing as an empty wire and does not use its words. */
 
 .blank,
 .wire-loading {
@@ -1087,9 +1066,8 @@ button {
 }
 
 /* ---- the tray ----
-   The running record of the session, pinned to the bottom from the moment
-   anything is saved. Ink rather than paper, because it is the one surface that
-   belongs to the reader rather than to the wire. */
+   The running record of the session, pinned to the bottom from the moment anything is saved.
+   Ink rather than paper, because it is the one surface that  belongs to the reader rather than to the wire. */
 
 .tray {
   position: fixed;
@@ -1116,11 +1094,9 @@ button {
   overflow: hidden;
   flex: 1 1 auto;
   /* Exactly three chip rows: 1.375rem each, plus the two gaps between them.
-     The height has to land on a whole number of rows or the clipped row shows
-     as a sliver, which reads as a broken layout rather than a deliberate one.
+     The height has to land on a whole number of rows or the clipped row shows as a sliver, which reads as a broken layout rather than a deliberate one.
      The previous 2.2rem was neither one row nor two and did exactly that.
-     Clipping past three is fine: the count beside the chips is the truth, and
-     every chip's story is listed below with its own Remove. */
+     Clipping past three is fine: the count beside the chips is the truth, and every chip's story is listed below with its own Remove. */
   max-height: calc(3 * 1.375rem + 2 * 0.4rem);
 }
 
@@ -1192,8 +1168,7 @@ button {
   margin-top: 0.4rem;
 }
 
-/* Errors state what happened. red-ink because this is a word, and it is the
-   only colour this form needs to speak with. */
+/* Errors state what happened. red-ink because this is a word, and it is the only colour this form needs to speak with. */
 .auth-error {
   font-size: 15px;
   color: var(--color-red-ink);
@@ -1209,15 +1184,319 @@ button {
   font-size: 15px;
 }
 
+/* ---- the desk ----
+   The same paper, edited by the reader.
+   It reuses the wire's photography and type, and composes them as a day's reading rather than as a front page:
+   a lead, then the pillars as the sections of a paper, then one band per story carrying the time the reader kept it. */
+
+/* The desk's bar is the spine's furniture without the sticky behaviour: 
+there is no deck behind this page, so nothing has to take over when one scrolls away.
+The shared box lives with .spine above so the two cannot drift;
+only the rule under it differs, because this one is not separating a header from a feed. */
+.deskbar {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+/* Sits tight to the wordmark. Slightly tighter padding than a full .btn: this is furniture in a fixed-height bar, not a call to action. */
+.deskbar-back {
+  padding: 0.45rem 0.7rem;
+}
+
+/* The gap that pushes the account nav to the far end belongs to the nav, not to the back button;
+   the back button is hidden below 760, and hanging the auto margin on it left the nav jammed against the wordmark on every phone.
+   The spine avoids this the same way, by putting the margin on its count. */
+.deskbar .top-nav {
+  margin-left: auto;
+}
+
+/* The page's measure, set once.
+   Three blocks share it and the page is only a single column while all three agree. */
+.masthead,
+.archive,
+.edition {
+  max-width: 84rem;
+  margin: 0 auto;
+}
+
+/* A masthead, not a page heading.
+  Centred, with the date and the edition's own facts set into the rule beneath it, which is where a paper prints them. */
+.masthead {
+  text-align: center;
+  padding: 3.25rem 1.25rem 0;
+}
+
+.masthead-title {
+  margin: 0;
+  font-size: clamp(2.75rem, 7vw, 6rem);
+  font-variation-settings:
+    "wdth" 78,
+    "wght" 800,
+    "opsz" 72;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+}
+
+.masthead-line {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: 1.1rem 0 0;
+  padding: 0.7rem 0;
+  border-top: 2px solid var(--color-ink);
+  border-bottom: 1px solid var(--color-ink);
+}
+
+/* The count and the minutes are secondary to the date, which is the edition's identity.
+   Dimmed on its own span so the date stays at full strength. */
+.masthead-facts {
+  opacity: 0.72;
+}
+
+.archive {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.9rem 1.25rem;
+}
+
+.archive-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.archive-day {
+  display: inline-flex;
+  gap: 0.45rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--color-rule);
+  color: inherit;
+  text-decoration: none;
+}
+
+.archive-day:hover {
+  background: var(--color-paper-2);
+}
+
+/* The edition being read carries a filled chip and aria-current, so the state is never left to appearance alone. */
+.archive-day[aria-current="page"] {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border-color: var(--color-ink);
+}
+
+.archive-day[aria-current="page"] .quiet {
+  opacity: 0.8;
+}
+
+.edition {
+  padding: 0 1.25rem;
+}
+
+/* The lead is the wire's card, unchanged, at the deck's proportions.
+   Height comes from an aspect ratio rather than the viewport:
+   this page scrolls, so a 100dvh lead would push the rest of the edition permanently below the fold. */
+.ed-lead {
+  padding-top: 2rem;
+}
+
+.ed-lead .card {
+  height: auto;
+  aspect-ratio: 16 / 7;
+  min-height: 22rem;
+  /* The stacked-paper shadow means "two more cards to come", which is true on the deck and false here.
+     Nothing on the desk is waiting to be dealt. */
+  box-shadow: none;
+}
+
+/* The deck centres a card's copy because the card fills the viewport and centring is what composes it.
+   Here the card is a band across a scrolling page, so centring left a hole between the slugline and the facts line. */
+.ed-lead .copy {
+  justify-content: flex-start;
+  padding-top: 3.9rem;
+}
+
+/* A pillar break: the name set into a rule that runs the width of the section, the way a printed section break works.
+   The 12px furniture heading it replaces was invisible against a page of photographs. */
+.pillar {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin: 3rem 0 0.25rem;
+}
+
+.pillar h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.1vw, 2.1rem);
+  font-variation-settings:
+    "wdth" 84,
+    "wght" 700,
+    "opsz" 32;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.pillar::after {
+  content: "";
+  flex: 1;
+  border-bottom: 2px solid var(--color-ink);
+}
+
+/* One band per story.
+  The image column is a fixed width at a fixed ratio, and both halves of that matter:
+  the Guardian's assets are 5:4, and deriving the box from anything else;
+  reading time, the length of the copy beside it;
+  gave every row a different aspect and cropped a 1.25 photograph into a box up to 3.78 wide.
+  Measured on real data: six different box ratios down one page, two thirds of each image discarded from the centre, and heads cut off, because a head sits in the top third of a portrait and the centre is exactly what a wide crop keeps.
+  4:3 trims 6% off a 5:4 source, and biasing the crop to 30% from the top spends that 6% on the feet. */
+.band {
+  display: grid;
+  grid-template-columns: 4.5rem 15rem minmax(0, 1fr);
+  gap: 0 1.5rem;
+  /* Centred, because the copy is usually shorter than a 4:3 photograph and hanging it from the top left the row bottom-heavy with dead space. */
+  align-items: center;
+  padding: 1.1rem 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+/* Rows stored before phase 1 have no photograph.
+   The copy takes the space rather than leaving a grey rectangle, the same rule the card follows. */
+.band[data-shot="none"] {
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+}
+
+.band:hover {
+  background: var(--color-paper-2);
+}
+
+/* The time stays at the top of its row whatever the row does, so the column of times reads as a spine down the day rather than drifting with each band.
+
+   Red-ink, and the facts beside it blue. Note this reads the two accents the opposite way round from the rest of the site, where red is the machine's time and blue is the reader's hand:
+   here the clock is red and the story's own metadata is blue. 
+   Call, made deliberately after the alternative was put to him.
+   red-ink rather than red because this is a glyph - 5.09:1 on paper, 4.63:1 on a hovered band. */
+.band-t {
+  align-self: start;
+  padding-top: 0.25rem;
+  color: var(--color-red-ink);
+}
+
+.band-shot {
+  margin: 0;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--color-paper-3);
+}
+
+.band-shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+}
+
+.band-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-right: 1rem;
+}
+
+.band-f {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin: 0 0 0.5rem;
+}
+
+/* The reading time carries the blue, and only it.
+   The section and the publish time stay dimmed ink:
+   colouring the whole line made three facts shout at once, and how long a story takes is the one of them a reader is deciding on.
+   Scoped to the band, so `.quiet` and `.read-time` mean nothing different anywhere else on the site.
+
+   Full strength, not dimmed. Blue at .quiet's 0.72 composites to 4.17:1 on paper and 3.94:1 on a hovered band, both under AA;
+   undimmed it is 6.32:1 and 5.75:1.
+   A colour is never stacked with an opacity here, and this is why.
+   The `Live` marker in the same line keeps its own red: it is the one fact that is still changing. */
+.band-f .read-time {
+  opacity: 1;
+  color: var(--color-blue);
+}
+
+/* The headline still grows with the reading time, which is where that signal was legible in the first place.
+    --m is published through the CSSOM, never a style attribute: the attribute is what the CSP blocks. */
+.band-h {
+  margin: 0;
+  font-size: clamp(1.15rem, calc(1rem + var(--m, 3) * 0.075rem), 1.7rem);
+  font-variation-settings:
+    "wdth" 86,
+    "wght" 700,
+    "opsz" 28;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+}
+
+.band-h a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.band-h a:hover {
+  text-decoration: underline;
+}
+
+.band-s {
+  margin: 0.7rem 0 0;
+  font-size: 15px;
+  line-height: 1.42;
+  max-width: 56ch;
+}
+
+/* Remove sits at the foot of the copy, reachable but never competing with the headline.
+  The desk is editable or it is a museum; it just is not a list of rows with a button on each, which is the thing the design rules out. */
+.band-acts {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0;
+  padding-top: 0.9rem;
+}
+
+.band-msg {
+  color: var(--color-red-ink);
+}
+
+/* An empty desk is an invitation, never a shrug and deliberately without `-30-`, which the design spec spends in exactly two places: the deck's cleared state and the footer.
+A third use would make it decoration. */
+.desk-empty {
+  max-width: 42rem;
+  margin: 4rem auto 6rem;
+  text-align: center;
+}
+
+.desk-empty .note {
+  margin: 1rem auto 2rem;
+}
+
 /* ---- narrow widths ----
-   The two fixed bars must not wrap, so what they carry is dropped in order of
-   how little it costs: the dateline first, then the tick gauge, then the long
-   labels shorten. The counts and the decisions never go. */
+   The two fixed bars must not wrap, so what they carry is dropped in order of how little it costs:
+   the dateline first, then the tick gauge, then the long labels shorten.
+   The counts and the decisions never go. */
 
 @media (max-width: 1100px) {
-  /* Four columns stop fitting a real headline. The meta line goes above and
-     the actions below, both full width, so the picture and the copy keep the
-     space they need. */
+  .band {
+    grid-template-columns: 4.5rem 13rem minmax(0, 1fr);
+  }
+
+  .ed-lead .card {
+    aspect-ratio: 16 / 9;
+  }
+
+  /* Four columns stop fitting a real headline.
+     The meta line goes above and the actions below, both full width, so the picture and the copy keep the space they need. */
   .row {
     grid-template-columns: 120px 1fr;
     grid-template-areas:
@@ -1243,6 +1522,35 @@ button {
 @media (max-width: 760px) {
   :root {
     --rail-w: 2.4rem;
+  }
+
+  /* The lead loses its fixed proportions and takes the height its copy needs:
+     at this width the card is already stacked, and forcing 16/9 on top of that crushes the photograph. */
+  .ed-lead .card {
+    aspect-ratio: auto;
+    min-height: 0;
+  }
+
+  /* The photograph goes above the copy rather than beside it:
+     a 13rem image next to a headline leaves neither enough room at this width.
+     The time stays in its own column, because it is the spine the day hangs on. */
+  .band,
+  .band[data-shot="none"] {
+    grid-template-columns: 3.75rem minmax(0, 1fr);
+  }
+
+  .band-shot {
+    grid-column: 2;
+    margin-bottom: 0.8rem;
+  }
+
+  .band-copy {
+    grid-column: 2;
+    padding-right: 0;
+  }
+
+  .deskbar-back {
+    display: none;
   }
 
   .card {
@@ -1303,9 +1611,8 @@ button {
     right: 0.75rem;
   }
 
-  /* A fixed-height bar shortens its labels rather than wrapping. The wordmark
-     is already in the deck above, and the wire total is on the deck's own
-     Browse control. */
+  /* A fixed-height bar shortens its labels rather than wrapping.
+    The wordmark is already in the deck above, and the wire total is on the deck's own Browse control. */
   .spine .word,
   .spine-total,
   .spine-total + .spine-sep {
@@ -1331,16 +1638,14 @@ button {
     gap: 0.5rem 0.75rem;
   }
 
-  /* The chips are the first thing to go when the tray is tight: the count and
-     the way onward are what the reader needs, and every chip's story is still
-     listed below with its own Remove. */
+  /* The chips are the first thing to go when the tray is tight:
+     the count and the way onward are what the reader needs, and every chip's story is still  listed below with its own Remove. */
   .tray-chips {
     display: none;
   }
 }
 
-/* prefers-reduced-motion: the decision still happens, instantly - only the
-   animation is removed. */
+/* prefers-reduced-motion: the decision still happens, instantly - only the animation is removed. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

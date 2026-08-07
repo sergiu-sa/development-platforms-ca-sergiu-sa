@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lede - Your desk</title>
+  </head>
+  <body>
+    <!-- A thin utility bar rather than the homepage's spine: there is no deck behind this page, so there are no counts to keep on screen and nothing to go back to except the wire itself. -->
+    <div class="deskbar">
+      <a href="/index.html" class="word">Lede<b>.</b></a>
+      <!-- A bordered control rather than a bare link, matching the spine's "Back to the deck" on the homepage: a way out of a page is a button in this product, and an underlined phrase floating beside the wordmark read as a second half of it.
+       The arrow is decorative, so the accessible name stays the sentence. -->
+      <a href="/index.html" class="btn m deskbar-back">
+        <span aria-hidden="true">&larr;</span>
+        <span>Back to the wire</span>
+      </a>
+      <nav class="top-nav m" aria-label="Account">
+        <a href="/login.html" id="nav-login" class="nav-link">Log in</a>
+        <span id="nav-user" class="quiet top-nav-user" hidden></span>
+        <button id="nav-logout" class="nav-link" type="button" hidden>
+          Log out
+        </button>
+      </nav>
+    </div>
+
+    <main>
+      <header class="masthead">
+        <h1 class="masthead-title">Your desk</h1>
+        <p class="masthead-line m">
+          <span id="edition-date"></span>
+          <span class="masthead-facts" id="edition-facts"></span>
+        </p>
+      </header>
+
+      <!-- Earlier editions. Hidden until there is more than today, so a first visit is not asked to navigate something with one entry in it. -->
+      <nav class="archive" id="archive" aria-label="Earlier editions" hidden>
+        <span class="archive-label m quiet">Editions</span>
+        <div class="archive-strip" id="archive-strip"></div>
+      </nav>
+
+      <div class="edition" id="edition">
+        <p class="m quiet">Loading your desk...</p>
+      </div>
+    </main>
+
+    <footer class="foot m quiet">
+      <span>Lede</span>
+      <span>Stories &copy; Guardian News &amp; Media</span>
+      <span aria-hidden="true">-30-</span>
+    </footer>
+
+    <script type="module" src="/src/pages/desk.ts"></script>
+  </body>
+</html>
