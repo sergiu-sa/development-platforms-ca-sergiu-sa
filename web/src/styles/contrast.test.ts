@@ -1,34 +1,43 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /**
- * The accessibility floor, swept out of the stylesheet rather than trusted to a
- * comment. Three things can breach it and each has its own check below: a token
- * that is simply too pale, an opacity that composites below AA, and a font-size
- * under the readable minimum.
+ * The accessibility floor, swept out of the stylesheet rather than trusted to a comment.
+ * Three things can breach it and each has its own check below:
+ * a token that is simply too pale, an opacity that composites below AA, and a font-size under the readable minimum.
  *
- * This used to also keep --opacity-floor in app.css equal to OPACITY_MIN in
- * wire/ramp.ts. The ramp is deleted, so the floor now lives in exactly one
- * place - this file - and that test guarded nothing worth keeping.
+ * This used to also keep --opacity-floor in app.css equal to OPACITY_MIN in wire/ramp.ts.
+ * The ramp is deleted, so the floor now lives in exactly one place - this file - and that test guarded nothing worth keeping.
  */
 const cssPath = fileURLToPath(new URL("./app.css", import.meta.url));
 const css = readFileSync(cssPath, "utf-8");
 
+const webRoot = fileURLToPath(new URL("../../", import.meta.url));
+
 /**
- * Every page's markup, read once. Two checks below sweep these files, and the
- * list is the only place the set of pages is written - a fourth page added to
- * one check but not the other would be checked half as well, silently.
+ * Every page's markup, read once, and discovered rather than listed.
+ *
+ * This was a hand-written array of three filenames, which meant a page added by a later phase escaped both sweeps below until somebody remembered to add it;
+ * and the failure is silent, which is the worst kind this file has.
+ * The desk was the fourth page and would have been the first to slip through.
  */
-const MARKUP_FILES = ["index.html", "login.html", "register.html"].map(
-  (file) => ({
+const MARKUP_FILES = readdirSync(webRoot)
+  .filter((file) => file.endsWith(".html"))
+  .sort()
+  .map((file) => ({
     file,
-    markup: readFileSync(
-      fileURLToPath(new URL(`../../${file}`, import.meta.url)),
-      "utf-8"
-    ),
-  })
-);
+    markup: readFileSync(`${webRoot}${file}`, "utf-8"),
+  }));
+
+// Discovery replaced a hand-written list, which traded one silent failure for another:
+// a list goes stale when a page is added, but a glob that finds nothing sweeps nothing and both markup checks below pass green.
+// The hard-coded version at least threw ENOENT. This is the guard on the guard.
+if (MARKUP_FILES.length === 0) {
+  throw new Error(
+    `No HTML pages found in ${webRoot} - the sweep would pass vacuously`
+  );
+}
 
 /** Ink at this opacity measures 7.37:1 on paper. Below it, AA starts to fail. */
 const OPACITY_FLOOR = 0.72;
@@ -41,26 +50,19 @@ const ABSOLUTE_MIN_PX = 12;
 
 /**
  * Selectors allowed to set a size between ABSOLUTE_MIN_PX and PROSE_MIN_PX.
- * Furniture only - labels, slugs, timestamps, buttons, status. Adding to this
- * list is the deliberate act the test exists to force.
+ * Furniture only - labels, slugs, timestamps, buttons, status. Adding to this list is the deliberate act the test exists to force.
  */
 const FURNITURE_SELECTORS = [".m"];
 
 /**
  * Keyframes allowed to animate opacity below the floor.
  *
- * Named one by one rather than exempting @keyframes wholesale, because fading
- * a block of text to 0.25 and leaving it there is a genuine failure and should
- * still break this test. Every entry here is transient, decorative, and gone
- * entirely under prefers-reduced-motion.
+ * Named one by one rather than exempting @keyframes wholesale, because fading a block of text to 0.25 and leaving it there is a genuine failure and should still break this test.
+ * Every entry here is transient, decorative, and gone entirely under prefers-reduced-motion.
  *
- * - `beat` is the live dot's pulse. A graphic, not text, and redundant with
- *   the word "Live" beside it, so dimming it costs a reader nothing.
- * - `fly-skip` and `fly-save` fade out the card that was just decided. It is
- *   an inert, aria-hidden clone leaving the frame; the decision itself has
- *   already been applied and the next card is already on screen.
- * - `deal` fades the incoming card in over 180ms. Contrast is a property of
- *   what a page settles at, and this one settles at full strength.
+ * - `beat` is the live dot's pulse. A graphic, not text, and redundant with the word "Live" beside it, so dimming it costs a reader nothing.
+ * - `fly-skip` and `fly-save` fade out the card that was just decided. It is an inert, aria-hidden clone leaving the frame; the decision itself has already been applied and the next card is already on screen.
+ * - `deal` fades the incoming card in over 180ms. Contrast is a property of what a page settles at, and this one settles at full strength.
  */
 const EXEMPT_KEYFRAMES = ["beat", "fly-skip", "fly-save", "deal"];
 
@@ -106,9 +108,8 @@ function contrastRatio(a: Rgb, b: Rgb): number {
   return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 }
 
-// What the browser actually paints when opacity < 1: the foreground colour
-// alpha-blended over the background, channel by channel, measured before
-// the unblended foreground colour is ever considered.
+// What the browser actually paints when opacity < 1:
+// the foreground colour alpha-blended over the background, channel by channel, measured before the unblended foreground colour is ever considered.
 function compositeOver(fg: Rgb, bg: Rgb, alpha: number): Rgb {
   return {
     r: alpha * fg.r + (1 - alpha) * bg.r,
@@ -118,9 +119,8 @@ function compositeOver(fg: Rgb, bg: Rgb, alpha: number): Rgb {
 }
 
 /**
- * Every @keyframes block's name and character range, found once. Braces are
- * matched forward from each block's opening, so a nested rule cannot make a
- * later declaration look as though it is still inside the animation.
+ * Every @keyframes block's name and character range, found once.
+ * Braces are matched forward from each block's opening, so a nested rule cannot make a later declaration look as though it is still inside the animation.
  */
 const KEYFRAME_RANGES = [...css.matchAll(/@keyframes\s+([\w-]+)\s*\{/g)].map(
   (match) => {
@@ -190,9 +190,7 @@ function fontSizeDeclarations(): { selector: string; px: number }[] {
   for (const match of css.matchAll(/font-size:\s*([^;]+);/g)) {
     const raw = match[1].trim();
 
-    // clamp(min, preferred, max) is measured at its minimum: that is the size
-    // the smallest viewport actually renders, and the only one that can breach
-    // the floor.
+    // clamp(min, preferred, max) is measured at its minimum: that is the size the smallest viewport actually renders, and the only one that can breach the floor.
     const value = raw.startsWith("clamp(")
       ? raw.slice("clamp(".length).split(",")[0].trim()
       : raw;
@@ -210,12 +208,10 @@ function fontSizeDeclarations(): { selector: string; px: number }[] {
 /**
  * Tailwind alpha utilities written directly in markup, e.g. `text-ink/72`.
  *
- * This is the third channel the floor can leak through. A `text-ink/40` in an
- * HTML file never touches app.css, so neither check above would see it.
+ * This is the third channel the floor can leak through. A `text-ink/40` in an HTML file never touches app.css, so neither check above would see it.
  *
- * Deliberately measures the composited contrast rather than just asserting the
- * alpha is >= the floor. A pale token at a high alpha can still fail, and it is
- * the ratio the requirement is actually about.
+ * Deliberately measures the composited contrast rather than just asserting the alpha is >= the floor.
+ * A pale token at a high alpha can still fail, and it is the ratio the requirement is actually about.
  */
 function alphaUtilities(): { file: string; token: string; alpha: number }[] {
   const found: { file: string; token: string; alpha: number }[] = [];
@@ -236,7 +232,7 @@ const blue = hexToRgb(extractColor("blue"));
 const redInk = hexToRgb(extractColor("red-ink"));
 
 describe("contrast floor", () => {
-  // Both grounds are tested because red text lands on the recessed band too -
+  // Both grounds are tested because red text lands on the recessed band too;
   // the stale notice and a hovered row - and paper-2 is the harder of the two.
   // It is what decided the value of --color-red-ink.
   const pairs: [string, Rgb, Rgb][] = [
@@ -262,14 +258,11 @@ describe("contrast floor", () => {
   });
 
   /**
-   * --color-red measures 2.93:1 on paper. It fails AA for text and fails even
-   * the 3:1 non-text threshold, so it is only ever a filled mark that stands
-   * alone: the tick gauge's "now", a spindle thread. The moment it sets a glyph
-   * it is a contrast failure, and --color-red-ink exists for exactly that job.
+   * --color-red measures 2.93:1 on paper. It fails AA for text and fails even the 3:1 non-text threshold, so it is only ever a filled mark that stands alone:
+   * the tick gauge's "now", a spindle thread.
+   * The moment it sets a glyph it is a contrast failure, and --color-red-ink exists for exactly that job.
    *
-   * The negative lookahead is load-bearing: --color-red is a prefix of
-   * --color-red-ink, so matching var(--color-red without the closing paren
-   * would flag every correct use.
+   * The negative lookahead is load-bearing: --color-red is a prefix of --color-red-ink, so matching var(--color-red without the closing paren would flag every correct use.
    */
   it("never sets a glyph in --color-red", () => {
     const offenders: string[] = [];
@@ -290,9 +283,8 @@ describe("contrast floor", () => {
 
   it("never lets a literal opacity in app.css fall below the floor", () => {
     const offenders = literalOpacityDeclarations()
-      // WCAG 1.4.3 exempts inactive controls from the contrast minimum, so a
-      // dimmed :disabled button is allowed below the floor. Every other
-      // selector is held to it.
+      // WCAG 1.4.3 exempts inactive controls from the contrast minimum, so a dimmed :disabled button is allowed below the floor.
+      // Every other selector is held to it.
       .filter((d) => !d.selector.includes(":disabled"))
       .filter((d) => !(d.keyframe && EXEMPT_KEYFRAMES.includes(d.keyframe)))
       .filter((d) => d.value < OPACITY_FLOOR)
@@ -344,9 +336,7 @@ describe("markup", () => {
   it("keeps every Tailwind alpha utility at AA contrast", () => {
     const offenders = alphaUtilities()
       .map((u) => {
-        // Tokens are declared as --color-<name>; anything else is not ours to
-        // resolve, and a silent skip would be the failure this test exists to
-        // prevent, so an unknown token is reported rather than ignored.
+        // Tokens are declared as --color-<name>; anything else is not ours to resolve, and a silent skip would be the failure this test exists to prevent, so an unknown token is reported rather than ignored.
         let ratio: number;
         try {
           const fg = hexToRgb(extractColor(u.token));
