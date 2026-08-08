@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createStore, type DeckStore } from "./store";
 import { makeStories } from "./story.fixture";
-import { mountSpine } from "./spine";
+import { mountSpine, showDeskLink } from "./spine";
 
 /** Answers the reduced-motion query with `reduce`, and nothing else. */
 function prefersReducedMotion(reduce: boolean): void {
@@ -21,6 +21,7 @@ function mountPage(): DeckStore {
   document.body.innerHTML = `
     <header class="spine" id="spine">
       <span class="m quiet" id="spine-count"></span>
+      <a class="btn m" id="spine-desk" href="/desk.html" hidden>My desk</a>
       <button class="btn m" id="spine-deck" type="button"></button>
     </header>
   `;
@@ -34,6 +35,7 @@ const counts = () => document.getElementById("spine-count")?.textContent;
 
 beforeEach(() => {
   window.sessionStorage.clear();
+  window.localStorage.clear();
 });
 
 afterEach(() => {
@@ -83,9 +85,8 @@ describe("going back to the deck", () => {
   });
 
   it("jumps instantly when the reader asks for reduced motion", () => {
-    // The CSS `scroll-behavior: auto` in the reduced-motion block does not
-    // reach this: an explicit `behavior` passed to scrollTo wins over the
-    // computed property, so the option has to be decided in JS.
+    // The CSS `scroll-behavior: auto` in the reduced-motion block does not reach this:
+    // an explicit `behavior` passed to scrollTo wins over the computed property, so the option has to be decided in JS.
     prefersReducedMotion(true);
     const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
     mountPage();
@@ -93,5 +94,41 @@ describe("going back to the deck", () => {
     document.getElementById("spine-deck")!.click();
 
     expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "auto" });
+  });
+});
+
+describe("the spine's desk link", () => {
+  it("stays hidden from a signed-out reader, who has no desk", () => {
+    mountPage();
+    showDeskLink();
+
+    expect(document.getElementById("spine-desk")?.hidden).toBe(true);
+  });
+
+  it("appears for a signed-in reader", () => {
+    // The link §6.3 asked for from the start. Phase 4 left it out because /desk did not exist; phase 7 built it.
+    window.localStorage.setItem("token", "a.b.c");
+    mountPage();
+    showDeskLink();
+
+    const desk = document.getElementById("spine-desk");
+
+    expect(desk?.hidden).toBe(false);
+    expect(desk?.getAttribute("href")).toBe("/desk.html");
+  });
+
+  // It is revealed before the wire is fetched, and deliberately not by mountSpine:
+  // a failed wire returns early, and that is the one moment the desk is the only page still worth anything.
+  it("does not depend on the wire having loaded", () => {
+    window.localStorage.setItem("token", "a.b.c");
+    document.body.innerHTML = `
+      <header class="spine" id="spine">
+        <a class="btn m" id="spine-desk" href="/desk.html" hidden>My desk</a>
+      </header>
+    `;
+
+    showDeskLink();
+
+    expect(document.getElementById("spine-desk")?.hidden).toBe(false);
   });
 });

@@ -88,8 +88,7 @@
       </aside>
     </section>
 
-    <!-- Sits here rather than at the end of the body so a keyboard walk
-         reaches Undo straight after the decision that offered it. -->
+    <!-- Sits here rather than at the end of the body so a keyboard walk reaches Undo straight after the decision that offered it. -->
     <div class="toast" id="deck-toast" hidden>
       <span class="m" id="toast-text" aria-hidden="true"></span>
       <button class="m toast-undo" id="deck-undo" type="button">
@@ -98,19 +97,21 @@
       </button>
     </div>
 
-    <!-- The live region. Always in the document and never display:none, which
-         is what makes a screen reader announce a change to it. The toast above
-         is aria-hidden apart from its button, so each decision is announced
-         exactly once. -->
+    <!-- The live region. Always in the document and never display:
+     none, which is what makes a screen reader announce a change to it.
+     The toast above is aria-hidden apart from its button, so each decision is announced exactly once. -->
     <p class="sr-only" id="deck-announcer" role="status"></p>
 
     <main>
-      <!-- Sticky, and sitting directly after a 100dvh deck, so it takes over
-           exactly when the deck stops being visible. Nothing has to watch the
-           scroll position for that to be true. -->
+      <!-- Sticky, and sitting directly after a 100dvh deck, so it takes over exactly when the deck stops being visible.
+       Nothing has to watch the scroll position for that to be true. -->
       <header class="spine" id="spine">
         <a href="/index.html" class="word">Lede<b>.</b></a>
         <span class="m quiet" id="spine-count"></span>
+        <!-- Shown to a signed-in reader only:
+         a signed-out one has no desk to go to, and the tray offers them the sign-in that would give them
+             one. -->
+        <a class="btn m" id="spine-desk" href="/desk.html" hidden>My desk</a>
         <button class="btn m" id="spine-deck" type="button"></button>
       </header>
 
@@ -137,8 +138,7 @@
       <span aria-hidden="true">-30-</span>
     </footer>
 
-    <!-- The running record of the session. Hidden until something is saved,
-         so it never occupies the bottom of an untouched page. -->
+    <!-- The running record of the session. Hidden until something is saved, so it never occupies the bottom of an untouched page. -->
     <div class="tray" id="tray" hidden>
       <span class="tray-n m"><b id="tray-n">0</b> on your desk</span>
       <div class="tray-chips" id="tray-chips"></div>

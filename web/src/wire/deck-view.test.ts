@@ -72,17 +72,17 @@ const press = (key: string) =>
   );
 
 /**
- * The deck binds its keys to the document, and `document` outlives
- * `body.innerHTML`. Without this each mount leaves its listener behind, and
- * the first stale one to handle a key calls `preventDefault()` - which the
- * live handler reads as "already dealt with" and ignores. Every key test would
- * then pass or fail for reasons that have nothing to do with the deck.
+ * The deck binds its keys to the document, and `document` outlives `body.innerHTML`.
+ * Without this each mount leaves its listener behind, and the first stale one to handle a key calls `preventDefault()`;
+ * which the live handler reads as "already dealt with" and ignores.
+ * Every key test would then pass or fail for reasons that have nothing to do with the deck.
  */
 const bound: Array<[string, EventListener]> = [];
 const addEventListener = document.addEventListener.bind(document);
 
 beforeEach(() => {
   window.sessionStorage.clear();
+  window.localStorage.clear();
   stubIntersectionObserver();
 
   document.addEventListener = ((
@@ -114,9 +114,8 @@ describe("the deck's fly-out", () => {
   });
 
   it("does not fly the current card away when the list decides another one", () => {
-    // Phase 4 gives every row its own Save and Skip, so a decision can land on
-    // a story that is nowhere near the deck. The card on screen has not been
-    // decided and has not changed, and animating it off would tell the reader
+    // Phase 4 gives every row its own Save and Skip, so a decision can land on a story that is nowhere near the deck.
+    // The card on screen has not been decided and has not changed, and animating it off would tell the reader
     // it had.
     const store = mountPage(5);
 
@@ -127,8 +126,7 @@ describe("the deck's fly-out", () => {
   });
 
   it("does not fly a card away when a decision is taken back", () => {
-    // Remove and Un-skip only ever reach a story that is already decided, so
-    // by definition never the undecided one on deck.
+    // Remove and Un-skip only ever reach a story that is already decided, so by definition never the undecided one on deck.
     const store = mountPage(5);
     store.decide(4, "saved");
 
@@ -149,10 +147,8 @@ describe("the deck's keys", () => {
   });
 
   it("stops deciding once the deck has scrolled away", () => {
-    // The bindings are on the document, so before this a reader who had
-    // scrolled down to read the list would decide the card behind them by
-    // pressing S. Nothing becomes unreachable: every row carries its own
-    // labelled Save and Skip.
+    // The bindings are on the document, so before this a reader who had scrolled down to read the list would decide the card behind them by pressing S.
+    // Nothing becomes unreachable: every row carries its own labelled Save and Skip.
     const store = mountPage(5);
     scrollDeckAway();
 
@@ -174,8 +170,7 @@ describe("the deck's keys", () => {
   });
 
   it("still undoes from anywhere on the page", () => {
-    // Undo stays global because the toast that offers it is fixed-position,
-    // so there is always feedback wherever the reader is standing.
+    // Undo stays global because the toast that offers it is fixed-position, so there is always feedback wherever the reader is standing.
     const store = mountPage(5);
     store.decide(3, "saved");
     scrollDeckAway();
@@ -202,9 +197,7 @@ describe("the deck's rails and gauge", () => {
 
   it("threads the newest decision onto the top of the spindle", () => {
     // The rail is a fixed height and clips once past roughly seven decisions.
-    // Oldest-first meant the slugs a reader had just made were the ones that
-    // fell off, which is exactly backwards: the spindle should read like a
-    // spike, newest on top.
+    // Oldest-first meant the slugs a reader had just made were the ones that fell off, which is exactly backwards: the spindle should read like a spike, newest on top.
     const store = mountPage(5);
 
     store.decide(3, "saved");
@@ -216,5 +209,52 @@ describe("the deck's rails and gauge", () => {
     );
 
     expect(slugs).toEqual(["SPORT-5", "SPORT-1", "SPORT-3"]);
+  });
+});
+
+/**
+ * The cleared state's second way onward.
+ *
+ * The design asks for two, and phase 3 could only offer one because /desk did not exist.
+ * It is offered on the two conditions that make it useful rather than decorative: there is a desk to open, and something on it.
+ */
+describe("the cleared deck's way to the desk", () => {
+  /** Decides every story so the deck runs out. */
+  function clearTheWire(count: number): void {
+    const store = mountPage(count);
+    for (let id = 1; id <= count; id += 1) store.decide(id, "saved");
+  }
+
+  const panel = () => document.getElementById("deck-slot")!;
+  const deskLink = () => panel().querySelector("a[href='/desk.html']");
+
+  it("offers the desk once the wire runs out with something saved", () => {
+    window.localStorage.setItem("token", "a.b.c");
+    clearTheWire(3);
+
+    expect(panel().textContent).toContain("That's the wire.");
+    expect(deskLink()?.textContent).toContain("Go to my desk");
+    // Both ways onward, not one replacing the other.
+    expect(panel().querySelector("a[href='#browse']")).not.toBeNull();
+  });
+
+  it("offers only the browse link to a signed-out reader", () => {
+    // Their decisions live in this tab.
+    // The tray is where sign-in is offered, and asking twice on one screen is asking twice.
+    clearTheWire(3);
+
+    expect(panel().textContent).toContain("That's the wire.");
+    expect(deskLink()).toBeNull();
+    expect(panel().querySelector("a[href='#browse']")).not.toBeNull();
+  });
+
+  it("offers only the browse link when nothing was saved", () => {
+    window.localStorage.setItem("token", "a.b.c");
+    const store = mountPage(3);
+    for (let id = 1; id <= 3; id += 1) store.decide(id, "skipped");
+
+    // An empty edition is not what a reader who kept nothing wants next.
+    expect(panel().textContent).toContain("That's the wire.");
+    expect(deskLink()).toBeNull();
   });
 });

@@ -36,10 +36,8 @@ export const WIRE_UNAVAILABLE_LINE =
 /**
  * A decision as a reader reads it.
  *
- * The row used to print the raw union member as visible copy, which quietly
- * made an internal value part of the interface. Capitalised because the
- * announcer speaks it at the start of a sentence; the furniture class renders
- * it uppercase on screen either way.
+ * The row used to print the raw union member as visible copy, which quietly made an internal value part of the interface.
+ * Capitalised because the announcer speaks it at the start of a sentence; the furniture class renders it uppercase on screen either way.
  */
 export function decisionLabel(decision: Decision): string {
   return decision === "saved" ? "Saved" : "Skipped";
@@ -48,13 +46,22 @@ export function decisionLabel(decision: Decision): string {
 /**
  * What just happened, as the toast reports it.
  *
- * Taking a decision back is named after the button that offered it - Remove
- * gives "Removed", Un-skip gives "Un-skipped" - because the spec's rule is
- * that an action keeps its name for the whole flow. One word for both would
- * mean the toast answering a press of Remove with a verb the reader never
- * chose.
+ * Taking a decision back is named after the button that offered it;
+ * Remove gives "Removed", Un-skip gives "Un-skipped" - because the spec's rule is that an action keeps its name for the whole flow.
+ * One word for both would mean the toast answering a press of Remove with a verb the reader never chose.
  */
 export function actionLabel(action: LastAction): string {
   if (action.to !== null) return decisionLabel(action.to);
   return action.from === "saved" ? "Removed" : "Un-skipped";
 }
+
+/**
+ * The desk, named once.
+ *
+ * Read by the two surfaces that build their link in TypeScript: the tray and the deck's cleared panel.
+ * The spine's copy is an attribute in `index.html` and the archive strip builds dated variants of its own, so those two are spelled out where they sit;
+ * a constant cannot reach into markup, and pretending otherwise in this comment would be worse than the duplication.
+ */
+export const DESK_HREF = "/desk.html";
+
+export const DESK_CTA = "Go to my desk";

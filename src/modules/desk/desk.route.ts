@@ -1,7 +1,10 @@
 /**
  * Desk Routes - a reader's own saved and skipped stories.
  *
- * GET    /desk?state=       Everything they have decided, newest first
+ * GET    /desk?state=&view=&from=&to=
+ *                            Decisions, newest first. `view=compact` drops the
+ *                            story bodies and needs no window; the full form
+ *                            requires one, which is what bounds it.
  * PUT    /desk/:storyId     Save or skip one story
  * DELETE /desk/:storyId     Back to undecided
  * PUT    /desk              Fold a signed-out session into the account
@@ -44,8 +47,7 @@ function ownerOf(c: Context): number {
 }
 
 /**
- * Logs the real cause and tells the client nothing about it, which is how the
- * rest of the API answers a failure it did not expect.
+ * Logs the real cause and tells the client nothing about it, which is how the rest of the API answers a failure it did not expect.
  */
 function failed(c: Context, cause: unknown, doing: string) {
   console.error(`Desk error while ${doing}:`, cause);
@@ -55,13 +57,14 @@ function failed(c: Context, cause: unknown, doing: string) {
 
 deskRoutes.get("/", zValidator("query", deskQuerySchema), async (c) => {
   try {
-    const { state, view } = c.req.valid("query");
+    const { state, view, from, to } = c.req.valid("query");
     const owner = ownerOf(c);
 
+    // `view` picks the shape, as it always has. The schema requires a windowon the full form, so the two bound checks below are narrowing for the compiler rather than a second guard - `listDesk` takes a window, not an optional one, and this is what satisfies that type.
     const entries =
-      view === "compact"
+      view === "compact" || !from || !to
         ? await listDeskCompact(owner, state)
-        : await listDesk(owner, state);
+        : await listDesk(owner, { from, to }, state);
 
     return c.json({ success: true, total: entries.length, entries });
   } catch (error) {
@@ -79,8 +82,7 @@ deskRoutes.put(
       const { state } = c.req.valid("json");
       const entry = await setDecision(ownerOf(c), storyId, state);
 
-      // No row means the story is not in the cache. 404 rather than 400: the
-      // request was well formed, the thing it names is simply not here.
+      // No row means the story is not in the cache. 404 rather than 400: the request was well formed, the thing it names is simply not here.
       if (!entry) {
         return c.json(
           { success: false, message: "That story is not on the wire" },
@@ -103,8 +105,7 @@ deskRoutes.delete(
       const { storyId } = c.req.valid("param");
       const removed = await removeDecision(ownerOf(c), storyId);
 
-      // Removing something that was never there is a success. The client is
-      // stating the end state it wants, and that state already holds.
+      // Removing something that was never there is a success. The client is stating the end state it wants, and that state already holds.
       return c.json({ success: true, removed });
     } catch (error) {
       return failed(c, error, "updating your desk");

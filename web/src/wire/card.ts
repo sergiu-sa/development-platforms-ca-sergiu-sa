@@ -1,23 +1,19 @@
 /**
  * The card: one component, five variants.
  *
- * The variant comes from the Guardian's tone tag and nothing else. Never match
- * a headline for "- live" or guess from a section; the tag is authoritative
- * and the headline is not.
+ * The variant comes from the Guardian's tone tag and nothing else.
+ * Never matcha headline for "- live" or guess from a section; the tag is authoritative and the headline is not.
  *
- * Every variant carries the same fields and the same tokens. Only order, size
- * and weight change, which is why this is one function with an attribute
- * rather than five components.
+ * Every variant carries the same fields and the same tokens.
+ * Only order, size and weight change, which is why this is one function with an attribute rather than five components.
  *
  * The attribute is `data-variant`, where the design spec says `data-tone`.
- * Same idea, more honest name: a review that arrives without a star rating is
- * drawn as News, and an attribute called `tone` reading `news` for a story
- * whose tone is `reviews` would be a lie in the DOM.
+ * Same idea, more honest name: a review that arrives without a star rating is drawn as News, and an attribute called `tone` reading `news` for a story whose tone is `reviews` would be a lie in the DOM.
  */
 
-import { escapeHtml, safeUrl } from "../lib/html";
+import { escapeHtml } from "../lib/html";
 import { storySlug } from "../lib/slug";
-import { factParts, guardianLink, needsByLabel } from "./marks";
+import { factsLine, guardianLink, needsByLabel, storyImage } from "./marks";
 import type { Story, Variant } from "./types";
 
 export function cardVariant(tone: string, starRating: number | null): Variant {
@@ -29,12 +25,10 @@ export function cardVariant(tone: string, starRating: number | null): Variant {
     case "features":
       return "feature";
     case "reviews":
-      // Reviews do not always carry a rating, and the whole point of the
-      // variant is the rating. Without one it is an ordinary story.
+      // Reviews do not always carry a rating, and the whole point of the variant is the rating.
+      // Without one it is an ordinary story.
       //
-      // Tested for absence, not for truthiness: Guardian ratings run 0 to 5
-      // and the backend stores a zero, so `starRating ? …` would throw away a
-      // real one-star-short verdict and draw a panned film as ordinary news.
+      // Tested for absence, not for truthiness: Guardian ratings run 0 to 5 and the backend stores a zero, so `starRating ? …` would throw away a real one-star-short verdict and draw a panned film as ordinary news.
       return starRating === null || starRating === undefined
         ? "news"
         : "review";
@@ -46,31 +40,26 @@ export function cardVariant(tone: string, starRating: number | null): Variant {
 }
 
 /**
- * Section, time, reading time and rating - the furniture above the headline.
+ * Collapse a card - or the desk's band, which follows the same rule - to a single column because it has no photograph to draw.
  *
- * The parts themselves live in `marks.ts`, because the browse row prints the
- * same five in the same order and a second copy would be free to drift.
+ * The attribute is the contract and this function is its only writer, so the desk's broken-image guard asks the card to do it rather than knowing the string.
+ * The attribute name itself stays private: exporting it as well would be a second way to depend on the same thing.
  */
-function factsMarkup(story: Story, now: Date): string {
-  return factParts(story, story.section, now).join("");
+export function collapseShot(element: Element): void {
+  element.setAttribute("data-shot", "none");
 }
 
 /**
- * The photograph. Prefers the 1000px asset, falls back to the 500px thumbnail
- * for the rows stored before phase 1, and renders nothing at all when there is
- * neither - the copy takes the full card instead.
+ * The photograph. Prefers the 1000px asset, falls back to the 500px thumbnail for the rows stored before phase 1, and renders nothing at all when there is neither - the copy takes the full card instead.
  *
- * Real alt text from the API where it exists. Where it does not, `alt=""` is
- * deliberate: an invented description is worse than none, and the headline
- * beside it already carries the meaning.
+ * Real alt text from the API where it exists. Where it does not, `alt=""` is deliberate: an invented description is worse than none, and the headline beside it already carries the meaning.
  *
- * The source runs through `safeUrl()` as well as `escapeHtml()`, the same as
- * the story link does. Escaping alone stops an attribute breaking out but says
- * nothing about the scheme, and this is third-party content. `img-src` in the
- * CSP would catch it too, so this is the second lock rather than the only one.
+ * The source runs through `safeUrl()` as well as `escapeHtml()`, the same as the story link does.
+ * Escaping alone stops an attribute breaking out but says nothing about the scheme, and this is third-party content.
+ * `img-src` in the CSP would catch it too, so this is the second lock rather than the only one.
  */
 function shotMarkup(story: Story): string {
-  const src = safeUrl(story.imageUrl) ?? safeUrl(story.thumbnailUrl);
+  const src = storyImage(story);
   if (!src) return "";
 
   const credit = story.imageCredit
@@ -89,8 +78,7 @@ export function renderCard(story: Story, now: Date = new Date()): string {
   const shot = shotMarkup(story);
   const byline = story.byline ? escapeHtml(story.byline) : "";
 
-  // A comment piece belongs to its writer, so the writer leads and the byline
-  // line underneath would only repeat them.
+  // A comment piece belongs to its writer, so the writer leads and the byline line underneath would only repeat them.
   const writer =
     variant === "opinion" && byline ? `<p class="writer">${byline}</p>` : "";
   const bylineLine =
@@ -120,7 +108,7 @@ export function renderCard(story: Story, now: Date = new Date()): string {
     `<span class="slugline-id">${escapeHtml(storySlug(story.section, story.id))}</span>` +
     `${story.pillar ? `<span class="quiet">${escapeHtml(story.pillar)}</span>` : ""}` +
     `</p>` +
-    `<p class="facts m">${factsMarkup(story, now)}</p>` +
+    `<p class="facts m">${factsLine(story, story.section, now)}</p>` +
     writer +
     `<h2 class="headline">${escapeHtml(story.title)}</h2>` +
     standfirst +

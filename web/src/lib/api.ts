@@ -1,32 +1,22 @@
-// The server mounts everything it owns under /api, matching how Vercel serves
-// the Hono app alongside these static files on the same origin.
+// The server mounts everything it owns under /api, matching how Vercel serves the Hono app alongside these static files on the same origin.
 const API_BASE = "/api";
 
 /**
  * Validates a `?next=` value before it is used as a post-login redirect.
  *
- * Only a same-origin absolute path is safe. `//evil.com` is protocol-relative
- * and keeps the current scheme while switching host. `/\evil.com` reaches the
- * same result through a different door: several browsers fold a leading
- * backslash into a path/authority separator for special schemes (http/https),
- * so "/\" resolves the same way "//" does and "evil.com" is read as the host -
+ * Only a same-origin absolute path is safe. `//evil.com` is protocol-relative and keeps the current scheme while switching host. `/\evil.com` reaches the same result through a different door:
+ * several browsers fold a leading backslash into a path/authority separator for special schemes (http/https), so "/\" resolves the same way "//" does and "evil.com" is read as the host;
  * a naive `startsWith("/") && !startsWith("//")` check misses this entirely.
- * Rejecting a second "/" or "\" immediately after the first slash closes both
- * doors at once.
+ * Rejecting a second "/" or "\" immediately after the first slash closes bot doors at once.
  *
- * A tab, newline or carriage return is rejected wherever it appears in the
- * string, not just at the ends: the URL Standard strips ASCII tab and newline
- * from anywhere in a URL before parsing it, so a value that looks like a safe
- * single-slash path here - e.g. "/\n/evil.com" - can still resolve to
- * "//evil.com" once the browser removes the embedded character during
+ * A tab, newline or carriage return is rejected wherever it appears in the string, not just at the ends:
+ * the URL Standard strips ASCII tab and newline from anywhere in a URL before parsing it, so a value that looks like a safe single-slash path here - e.g. "/\n/evil.com";
+ * can still resolve to "//evil.com" once the browser removes the embedded character during
  * navigation.
  *
- * `next` normally arrives already url-decoded, via `URLSearchParams.get()`, so
- * a percent-encoded attack (`%2f%2fevil.com`) is what this function actually
- * sees as `//evil.com` - already covered above. It is still safe if some
- * future caller passes the raw, undecoded value directly: that value doesn't
- * literally start with "/", so it falls through to the same-origin default
- * rather than being decoded (and potentially over-decoded) here.
+ * `next` normally arrives already url-decoded, via `URLSearchParams.get()`, so a percent-encoded attack (`%2f%2fevil.com`) is what this function actually sees as `//evil.com` - already covered above.
+ * It is still safe if some future caller passes the raw, undecoded value directly:
+ * that value doesn't literally start with "/", so it falls through to the same-origin default rather than being decoded (and potentially over-decoded) here.
  */
 export function safeNext(next: string | null): string {
   if (!next) return "/";
@@ -37,20 +27,18 @@ export function safeNext(next: string | null): string {
 /**
  * Sends the user to login after their session has stopped being valid.
  *
- * Tokens last 7 days and nothing refreshes them, so expiry is a routine event
- * rather than an edge case. Without this the page just silently stops working:
- * requests 401, callers see a generic failure, and the nav still claims the
- * user is signed in. Clearing the token first is what makes updateNavigation()
- * tell the truth on the next page.
+ * Tokens last 7 days and nothing refreshes them, so expiry is a routine event rather than an edge case.
+ * Without this the page just silently stops working:
+ * requests 401, callers see a generic failure, and the nav still claims the user is signed in.
+ * Clearing the token first is what makes updateNavigation() tell the truth on the next page.
  */
 function handleExpiredSession() {
   localStorage.removeItem("token");
 
-  // Everything this tab remembers goes with the token, for exactly the reason
-  // logout() clears it: this lands the reader on the sign-in form, and whoever
-  // signs in there next has their session folded onto their desk. Without this
-  // an expired token is the open door that logout closed - person A's reading
-  // filed onto person B's account, and disclosed to them.
+  // Everything this tab remembers goes with the token, for exactly the reason logout() clears it:
+  // this lands the reader on the sign-in form, and whoever signs in there next has their session folded onto their desk.
+  // Without this an expired token is the open door that logout closed;
+  // person A's reading filed onto person B's account, and disclosed to them.
   try {
     sessionStorage.clear();
   } catch {
@@ -68,11 +56,10 @@ export interface ApiResult {
   /**
    * The HTTP status, or 0 when the request never got an answer.
    *
-   * Most callers only care whether the body says success. The desk's
-   * background sync needs more than that: it has to tell "the server refused
-   * this" from "we could not reach the server", because the first must never
-   * be retried and the second must be. A 404 retried forever would poison the
-   * queue behind it.
+   * Most callers only care whether the body says success.
+   * The desk's background sync needs more than that:
+   * it has to tell "the server refused this" from "we could not reach the server", because the first must never be retried and the second must be.
+   * A 404 retried forever would poison the queue behind it.
    */
   status: number;
   body: any;
@@ -98,10 +85,9 @@ async function request(
       headers,
     });
 
-    // A 401 while carrying a token means the token was rejected - expired,
-    // revoked or malformed. The /auth/ routes are excluded because there a 401
-    // means "wrong password", which must show an inline error rather than
-    // bounce the user somewhere.
+    // A 401 while carrying a token means the token was rejected;
+    // expired, revoked or malformed.
+    // The /auth/ routes are excluded because there a 401 means "wrong password", which must show an inline error rather than bounce the user somewhere.
     if (response.status === 401 && token && !endpoint.startsWith("/auth/")) {
       handleExpiredSession();
       return {
@@ -113,9 +99,8 @@ async function request(
       };
     }
 
-    // Must be awaited here, not returned as a pending promise. Without the
-    // await, a non-JSON body (a 404 page, a proxy error, a gateway timeout)
-    // rejects outside this try/catch and the caller never sees a result.
+    // Must be awaited here, not returned as a pending promise.
+    // Without the await, a non-JSON body (a 404 page, a proxy error, a gateway timeout) rejects outside this try/catch and the caller never sees a result.
     return { status: response.status, body: await response.json() };
   } catch (error) {
     return {
@@ -144,13 +129,26 @@ export async function getWire({
 /**
  * Everything the signed-in reader has decided, saved and skipped alike.
  *
- * `compact` because this builds a storyId-to-state map and never looks at a
- * story body. The full form carries one per decision, and the desk grows with
- * every card triaged rather than every card kept, so asking for it here would
- * make the homepage slower for exactly the readers who use the site most.
+ * `compact` because this builds a storyId-to-state map and never looks at a story body.
+ * The full form carries one per decision, and the desk grows with every card triaged rather than every card kept, so asking for it here would make the homepage slower for exactly the readers who use the site most.
  */
-export async function getDesk() {
-  return apiRequest("/desk?view=compact");
+export async function getDesk(state?: "saved" | "skipped") {
+  const params = new URLSearchParams({ view: "compact" });
+  if (state) params.set("state", state);
+
+  return apiRequest(`/desk?${params}`);
+}
+
+/**
+ * One edition: the saved stories a reader decided inside a window of time, with their full story rows.
+ *
+ * The window is computed by the caller, in the reader's own timezone, and sent as two absolute instants;
+ * so the server compares timestamps and never has to know what midnight means here.
+ * `from` is inclusive and `to` exclusive, so two consecutive days cannot both claim the same story.
+ */
+export async function getDeskEdition(from: string, to: string) {
+  const params = new URLSearchParams({ state: "saved", from, to });
+  return apiRequest(`/desk?${params}`);
 }
 
 export async function putDeskDecision(

@@ -68,8 +68,8 @@ describe("the tray", () => {
   });
 
   it("does not redraw itself for a decision that cannot reach the desk", () => {
-    // Rebuilding the chips and then measuring the tray forces a layout of the
-    // whole document. A skip, and an undo of a skip, must not pay for that.
+    // Rebuilding the chips and then measuring the tray forces a layout of the whole document.
+    // A skip, and an undo of a skip, must not pay for that.
     const store = mountPage();
     store.decide(1, "saved");
     const chip = document.querySelector(".tray-chip");
@@ -128,14 +128,17 @@ describe("the tray for a signed-out reader", () => {
 });
 
 describe("the tray for a signed-in reader", () => {
-  it("offers no dead link to a desk that does not exist yet", () => {
-    // /desk arrives in phase 7. A button that goes nowhere is worse than no
-    // button, and the count and the chips are the tray's real work anyway.
+  it("sends them to the desk their saves are going to", () => {
+    // Phase 7 built the page, so the button the tray withheld until then now has somewhere to go.
+    // A signed-out reader still gets sign-in instead:
+    // they have no desk until they have an account.
     window.localStorage.setItem("token", "a.b.c");
     const store = mountPage();
     store.decide(1, "saved");
 
-    expect(document.querySelector("#tray-cta a")).toBeNull();
+    const cta = document.querySelector<HTMLAnchorElement>("#tray-cta a")!;
+    expect(cta.textContent).toContain("Go to my desk");
+    expect(cta.getAttribute("href")).toBe("/desk.html");
     expect(document.getElementById("tray-n")?.textContent).toBe("1");
     expect(chips()).toEqual(["SPORT-1"]);
   });

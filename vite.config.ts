@@ -13,6 +13,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: entry("web/index.html"),
+        desk: entry("web/desk.html"),
         login: entry("web/login.html"),
         register: entry("web/register.html"),
       },
