@@ -1,30 +1,26 @@
 /**
- * The tray: what is on the reader's desk, pinned to the bottom of the page
- * from the moment they save anything.
+ * The tray: what is on the reader's desk, pinned to the bottom of the page from the moment they save anything.
  *
- * It is the running record of the session, which is why it lists the stories
- * as slugs rather than just counting them - a number tells you how many you
- * kept, a column of slugs tells you what you kept. Each chip removes its own
- * story, so anything saved by accident can come straight back off without
- * hunting for the row it came from.
+ * It is the running record of the session, which is why it lists the stories as slugs rather than just counting them;
+ * a number tells you how many you kept, a column of slugs tells you what you kept.
+ * Each chip removes its own story, so anything saved by accident can come straight back off without hunting for the row it came from.
  *
- * There is deliberately no call to action for a signed-in reader yet. `/desk`
- * is phase 7, and a blue button leading nowhere would be the most prominent
- * thing on the page and also the only broken one. The signed-out reader does
- * get one, because sign-in exists and is exactly what they need next.
+ * The call to action changes with who is reading.
+ * A signed-in reader is sent to their desk, which phase 7 built;
+ * a signed-out one is sent to sign in, because their decisions live in this tab and nowhere else until they do.
  */
 
 import { escapeHtml } from "../lib/html";
 import { isLoggedIn } from "../lib/auth";
 import { slugIndex } from "../lib/slug";
+import { DESK_CTA, DESK_HREF } from "./copy";
 import { BUTTON_FACES } from "./row";
 import type { DeckStore } from "./store";
 
 /**
  * Where a signed-out reader lands, and where they come back to.
  *
- * Encoded because `safeNext()` on the other end reads the raw parameter, and
- * a bare "/" is what it will allow through.
+ * Encoded because `safeNext()` on the other end reads the raw parameter, and a bare "/" is what it will allow through.
  */
 const SIGN_IN_HREF = "/login.html?next=%2F";
 
@@ -39,16 +35,15 @@ export function mountTray(store: DeckStore): void {
   // land back on mounts this again.
   if (cta) {
     cta.innerHTML = isLoggedIn()
-      ? ""
+      ? `<a class="btn btn-blue m" href="${DESK_HREF}">${DESK_CTA}</a>`
       : `<a class="btn btn-blue m" href="${SIGN_IN_HREF}">` +
         `Sign in to keep these</a>`;
   }
 
   const slugs = slugIndex(store.get().stories);
-  // What the desk held last time it was drawn. A skip, an undo of a skip and
-  // a re-decision all notify without changing it, and rebuilding the chips
-  // then measuring the tray forces a layout of the whole document - once per
-  // keypress, over a page holding twenty rows of photographs.
+  // What the desk held last time it was drawn.
+  // A skip, an undo of a skip and a re-decision all notify without changing it, and rebuilding the chips then measuring the tray forces a layout of the whole document;
+  // once per keypress, over a page holding twenty rows of photographs.
   let drawn: string | null = null;
 
   store.subscribe((state) => {
@@ -74,13 +69,12 @@ export function mountTray(store: DeckStore): void {
       })
       .join("");
 
-    // The toast has to sit above the tray, and the tray's height is not a
-    // constant: it wraps to two lines at 390 and changes again when the
-    // sign-in call to action is present. Publishing the measured height beats
-    // a magic number in the stylesheet that is only right at one width.
+    // The toast has to sit above the tray, and the tray's height is not a constant:
+    // it wraps to two lines at 390 and changes again when the sign-in call to action is present.
+    // Publishing the measured height beats a magic number in the stylesheet that is only right at one width.
     //
-    // Through the CSSOM rather than a style attribute - the attribute is what
-    // the CSP blocks, and `setProperty` is not subject to it at all.
+    // Through the CSSOM rather than a style attribute;
+    // the attribute is what the CSP blocks, and `setProperty` is not subject to it at all.
     document.documentElement.style.setProperty(
       "--tray-h",
       tray.hidden ? "0px" : `${tray.offsetHeight}px`
