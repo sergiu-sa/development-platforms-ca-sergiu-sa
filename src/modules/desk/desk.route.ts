@@ -9,9 +9,8 @@
  * DELETE /desk/:storyId     Back to undecided
  * PUT    /desk              Fold a signed-out session into the account
  *
- * Every one of these is somebody's private data, so the whole sub-app sits
- * behind authMiddleware rather than each route opting in. A route added later
- * is protected by default and cannot be published by forgetting a line.
+ * Every one of these is somebody's private data, so the whole sub-app sits behind authMiddleware rather than each route opting in.
+ * A route added later is protected by default and cannot be published by forgetting a line.
  */
 
 import { Hono } from "hono";
@@ -37,13 +36,12 @@ const deskRoutes = new Hono();
 deskRoutes.use("*", authMiddleware);
 
 /**
- * The one rule this file exists to keep: whose desk this is comes from the
- * verified token, never from the path, the query or the body. A request may
- * say anything it likes about who it is; the signature is the only part of it
- * that was checked.
+ * The one rule this file exists to keep: whose desk this is comes from the verified token, never from the path, the query or the body.
+ * A request may say anything it likes about who it is; the signature is the only part of it that was checked.
  */
 function ownerOf(c: Context): number {
-  return c.get("user").userId;
+  // Non-null because the whole sub-app sits behind authMiddleware, which answers 401 rather than calling next() when there is no valid token.
+  return c.get("user")!.userId;
 }
 
 /**
@@ -60,7 +58,8 @@ deskRoutes.get("/", zValidator("query", deskQuerySchema), async (c) => {
     const { state, view, from, to } = c.req.valid("query");
     const owner = ownerOf(c);
 
-    // `view` picks the shape, as it always has. The schema requires a windowon the full form, so the two bound checks below are narrowing for the compiler rather than a second guard - `listDesk` takes a window, not an optional one, and this is what satisfies that type.
+    // `view` picks the shape, as it always has. The schema requires a windowon the full form, so the two bound checks below are narrowing for the compiler rather than a second guard
+    //  - `listDesk` takes a window, not an optional one, and this is what satisfies that type.
     const entries =
       view === "compact" || !from || !to
         ? await listDeskCompact(owner, state)
