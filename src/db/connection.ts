@@ -17,6 +17,48 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
 });
 
+/**
+ * Runs `body` inside one transaction on one connection.
+ *
+ * Two things in the briefings module need this and neither works on the pool:
+ * `SET CONSTRAINTS ... DEFERRED` only applies to the transaction that issues it, and `SELECT ... FOR UPDATE` only holds its lock until the transaction ends.
+ * pool.query() takes an arbitrary connection per call, so both would be silently ineffective rather than failing.
+ *
+ * A failed ROLLBACK is swallowed deliberately.
+ * It means the connection is already gone, and letting that error replace the one that caused it would hide the actual failure behind a symptom of it.
+ */
+export async function withTransaction<T>(
+  body: (client: pg.PoolClient) => Promise<T>
+): Promise<T> {
+  const client = await pool.connect();
+  let released = false;
+
+  try {
+    await client.query("BEGIN");
+    const result = await body(client);
+    await client.query("COMMIT");
+
+    return result;
+  } catch (error) {
+    // A failed ROLLBACK means the connection is already gone, and letting that error replace the one that caused it would hide the actual failure behind a symptom of it.
+    // But the client cannot go back into the pool clean:
+    // it may still be sitting in an aborted transaction, and the next borrower would get 25P02 on an unrelated request.
+    // Releasing with an error destroys it instead.
+    let broken = false;
+    await client.query("ROLLBACK").catch(() => {
+      broken = true;
+    });
+    client.release(broken ? (error as Error) : undefined);
+    released = true;
+
+    throw error;
+  } finally {
+    if (!released) {
+      client.release();
+    }
+  }
+}
+
 // Test connection on startup
 export async function testConnection(): Promise<boolean> {
   try {
