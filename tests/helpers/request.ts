@@ -1,6 +1,6 @@
 /**
- * Thin wrapper over app.fetch() so tests read as HTTP calls rather than
- * Request construction. No server is started.
+ * Thin wrapper over app.fetch() so tests read as HTTP calls rather than Request construction.
+ * No server is started.
  */
 
 import { app } from "../../src/app.js";
@@ -44,32 +44,42 @@ export async function get(path: string, token?: string): Promise<ApiResponse> {
   return toApiResponse(response);
 }
 
-export async function post(
-  path: string,
-  body: unknown,
-  token?: string
-): Promise<ApiResponse> {
-  const response = await app.fetch(
-    new Request(`http://localhost${path}`, {
-      method: "POST",
-      headers: buildHeaders(token),
-      body: JSON.stringify(body),
-    })
-  );
+/**
+ * The three body-carrying verbs differ by one string, so they are made rather than written out.
+ *  The fourth is a line.
+ */
+function sendsJson(method: "POST" | "PUT" | "PATCH") {
+  return async function send(
+    path: string,
+    body: unknown,
+    token?: string
+  ): Promise<ApiResponse> {
+    const response = await app.fetch(
+      new Request(`http://localhost${path}`, {
+        method,
+        headers: buildHeaders(token),
+        body: JSON.stringify(body),
+      })
+    );
 
-  return toApiResponse(response);
+    return toApiResponse(response);
+  };
 }
 
-export async function put(
-  path: string,
-  body: unknown,
-  token?: string
-): Promise<ApiResponse> {
+export const post = sendsJson("POST");
+export const put = sendsJson("PUT");
+export const patch = sendsJson("PATCH");
+
+/**
+ * HEAD, which carries no body by definition.
+ *
+ * Worth having: Hono re-dispatches HEAD through the GET handler chain, so a route can answer GET correctly and HEAD wrongly, and nothing else in the suite would notice.
+ */
+export async function head(path: string, token?: string): Promise<ApiResponse> {
   const response = await app.fetch(
     new Request(`http://localhost${path}`, {
-      method: "PUT",
+      method: "HEAD",
       headers: buildHeaders(token),
-      body: JSON.stringify(body),
     })
   );
 
