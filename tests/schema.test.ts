@@ -1,9 +1,8 @@
 /**
  * Schema constraint tests.
  *
- * The briefings tables have no routes yet, but three constraints carry
- * guarantees the design depends on. Proving them here means a wrong schema is
- * found before an API is built on top of it.
+ * The briefings tables have no routes yet, but three constraints carry guarantees the design depends on.
+ * Proving them here means a wrong schema is found before an API is built on top of it.
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
@@ -15,8 +14,8 @@ beforeEach(resetDatabase);
 afterAll(closeDatabase);
 
 /**
- * Postgres SQLSTATE codes. Asserting on these rather than "it threw" means a
- * test cannot pass because of an unrelated failure such as a typo in the SQL.
+ * Postgres SQLSTATE codes.
+ * Asserting on these rather than "it threw" means a test cannot pass because of an unrelated failure such as a typo in the SQL.
  */
 const UNIQUE_VIOLATION = "23505";
 const FOREIGN_KEY_VIOLATION = "23503";
@@ -105,8 +104,7 @@ describe("users indexes", () => {
 });
 
 describe("stories constraints", () => {
-  // tone picks the card a story is drawn as, so a value the frontend has no
-  // card for must not be storable in the first place.
+  // tone picks the card a story is drawn as, so a value the frontend has no card for must not be storable in the first place.
   it("rejects a tone outside the enum", async () => {
     await expectPgError(
       pool.query(
@@ -129,8 +127,8 @@ describe("stories constraints", () => {
 });
 
 describe("briefing_items constraints", () => {
-  // The "still renders in a year" guarantee: wire cache cleanup must be
-  // physically incapable of breaking a published briefing.
+  // The "still renders in a year" guarantee:
+  // wire cache cleanup must be physically incapable of breaking a published briefing.
   it("refuses to delete a story referenced by a briefing", async () => {
     const { storyIds } = await seedBriefingWithTwoStories();
 
@@ -200,8 +198,24 @@ describe("briefing_items constraints", () => {
     expect(rows).toHaveLength(1);
   });
 
-  // Reordering swaps positions, which transiently duplicates one. The
-  // constraint must be deferrable or promoting a story to lead is impossible.
+  // The keyword itself, asserted directly, because measuring what it does turned up something worth pinning:
+  // a unique constraint declared DEFERRABLE is checked at the end of the statement, while a plain one is checked as each row is written.
+  // So the reorder in briefings.service.ts
+  //  - one UPDATE that rewrites every position at once
+  // - is legal only because of this word.
+  // Take DEFERRABLE out of db/schema.sql and that single statement starts raising 23505 halfway through, which is a long way from where anyone would look.
+  // This case names the cause; the reorder route test only shows the symptom.
+  it("declares the position constraint deferrable", async () => {
+    const { rows } = await pool.query<{ condeferrable: boolean }>(
+      `SELECT condeferrable FROM pg_constraint
+        WHERE conname = 'briefing_items_unique_position'`
+    );
+
+    expect(rows[0]?.condeferrable).toBe(true);
+  });
+
+  // Reordering swaps positions, which transiently duplicates one.
+  // The constraint must be deferrable or promoting a story to lead is impossible.
   it("allows swapping positions inside a deferred transaction", async () => {
     const { briefingId, itemIds } = await seedBriefingWithTwoStories();
     const client = await pool.connect();
@@ -276,8 +290,8 @@ describe("saved_stories constraints", () => {
     return { userId: users[0].id, storyId: stories[0].id };
   }
 
-  // The constraint the whole concept rests on. Cache cleanup must be
-  // physically incapable of emptying somebody's desk.
+  // The constraint the whole concept rests on.
+  // Cache cleanup must be physically incapable of emptying somebody's desk.
   it("refuses to delete a story someone has saved", async () => {
     const { storyId } = await seedDesk("saved");
 
@@ -287,9 +301,9 @@ describe("saved_stories constraints", () => {
     );
   });
 
-  // Documented rather than desired: a foreign key cannot be conditional on a
-  // column, so RESTRICT covers skipped rows too. Pruning stale stories means
-  // clearing their skipped rows first, and this is where that is written down.
+  // Documented rather than desired:
+  // a foreign key cannot be conditional on a column, so RESTRICT covers skipped rows too.
+  // Pruning stale stories means clearing their skipped rows first, and this is where that is written down.
   it("also refuses to delete a story someone has skipped", async () => {
     const { storyId } = await seedDesk("skipped");
 
@@ -312,8 +326,8 @@ describe("saved_stories constraints", () => {
     expect(rows).toHaveLength(0);
   });
 
-  // What makes the write idempotent: one decision per reader per story, so an
-  // upsert has a single row to land on.
+  // What makes the write idempotent:
+  // one decision per reader per story, so an upsert has a single row to land on.
   it("rejects the same story twice on one desk", async () => {
     const { userId, storyId } = await seedDesk();
 

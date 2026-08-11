@@ -23,8 +23,7 @@ import dotenv from "dotenv";
 import pg from "pg";
 import { sslForConnection } from "../src/db/ssl.js";
 import { checkSchema } from "../src/db/schema-probe.js";
-import { WIRE_PROBE } from "../src/modules/wire/wire.columns.js";
-import { DESK_PROBE } from "../src/modules/desk/desk.columns.js";
+import { SCHEMA_PROBES } from "../src/db/probes.js";
 
 export interface Target {
   url: string;
@@ -108,14 +107,11 @@ export function redactUrl(url: string): string {
 }
 
 /**
- * Every table and column currently present, so before and after can be
- * compared.
+ * Every table and column currently present, so before and after can be compared.
  *
- * Reported per table rather than for `stories` alone. The first version
- * counted stories columns and nothing else, so the run that created the whole
- * saved_stories table printed "added nothing, this database was already up to
- * date" - which is the one sentence an operator must be able to trust, since
- * it is the only feedback the step gives.
+ * Reported per table rather than for `stories` alone.
+ * The first version counted stories columns and nothing else, so the run that created the whole saved_stories table printed "added nothing, this database was already up to date";
+ * which is the one sentence an operator must be able to trust, since it is the only feedback the step gives.
  */
 async function schemaShape(runner: pg.Pool): Promise<Map<string, string[]>> {
   const { rows } = await runner.query<{
@@ -192,9 +188,8 @@ async function main(): Promise<void> {
       for (const line of changes) console.log(`  ${line}`);
     }
 
-    // The same probe /api/health runs, so "the script succeeded" and "the
-    // endpoints will work" are the same claim rather than two hopeful ones.
-    const check = await checkSchema(pool, [WIRE_PROBE, DESK_PROBE]);
+    // The same probe /api/health runs, so "the script succeeded" and "the endpoints will work" are the same claim rather than two hopeful ones.
+    const check = await checkSchema(pool, SCHEMA_PROBES);
 
     if (!check.ok) {
       throw new Error(
@@ -202,14 +197,15 @@ async function main(): Promise<void> {
       );
     }
 
-    console.log("  checked every column the wire and the desk depend on");
+    console.log(
+      `  checked every column all ${SCHEMA_PROBES.length} of its tables need`
+    );
   } finally {
     await pool.end();
   }
 }
 
-// Only run when invoked directly, so the tests can import the helpers above
-// without the script connecting to anything.
+// Only run when invoked directly, so the tests can import the helpers above without the script connecting to anything.
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   main().catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : error);

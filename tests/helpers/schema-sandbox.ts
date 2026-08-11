@@ -76,13 +76,114 @@ export const DEPLOYED_AT_PHASE_6 = [
 ].join(";\n");
 
 /**
- * Runs `body` against a client whose search_path points at an empty schema
- * named `name`, then drops it.
+ * The deployed databases as they stand at phase 8:
+ * everything above, plus the two briefings tables.
  *
- * search_path is reset before the connection goes back to the pool. Without
- * that, the next test to borrow the same connection inherits a search_path
- * naming a schema that has just been dropped - which fails in a way that has
- * nothing to do with the test that actually broke.
+ * Both have been on production and preview since the Postgres migration and have never changed shape
+ *  - checked directly against both rather than assumed, because "it was in the file" is exactly what was believed about phase 1's nine columns.
+ * Phase 8 therefore adds no column and needs no ALTER;
+ * this snapshot exists so that the *next* phase to add one cannot ship without it.
+ *
+ * Composed from the phase 6 constant rather than restating it, so there is still only one description of the older tables and it is still frozen.
+ */
+export const DEPLOYED_AT_PHASE_8 = [
+  DEPLOYED_AT_PHASE_6,
+
+  // The two tables the phase 6 snapshot never named.
+  // Both were measured against production and preview on 2026-08-08 rather than copied out of db/schema.sql
+  //  - a snapshot taken from the file it is meant to be checked against would agree with it by construction and prove nothing.
+  `CREATE TABLE auth_attempts (
+    id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    scope        TEXT NOT NULL,
+    identifier   TEXT NOT NULL,
+    attempted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+
+  `CREATE TABLE wire_sync (
+    id                   BOOLEAN PRIMARY KEY DEFAULT TRUE,
+    last_attempt_at      TIMESTAMPTZ NOT NULL,
+    last_success_at      TIMESTAMPTZ,
+    last_error           TEXT,
+    rate_limit_remaining INTEGER,
+    CONSTRAINT wire_sync_singleton CHECK (id)
+  )`,
+
+  `DO $$ BEGIN
+    CREATE TYPE briefing_status AS ENUM ('draft', 'published');
+  EXCEPTION WHEN duplicate_object THEN NULL;
+  END $$`,
+
+  `CREATE TABLE briefings (
+    id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    author_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title        VARCHAR(200) NOT NULL,
+    intro        TEXT,
+    slug         TEXT NOT NULL UNIQUE,
+    status       briefing_status NOT NULL DEFAULT 'draft',
+    published_at TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+
+  `CREATE INDEX briefings_public_idx
+     ON briefings (published_at DESC, id DESC)
+     WHERE status = 'published'`,
+
+  `CREATE TABLE briefing_items (
+    id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    briefing_id INTEGER NOT NULL REFERENCES briefings(id) ON DELETE CASCADE,
+    story_id    INTEGER NOT NULL REFERENCES stories(id) ON DELETE RESTRICT,
+    note        TEXT,
+    position    INTEGER NOT NULL,
+    CONSTRAINT briefing_items_unique_story UNIQUE (briefing_id, story_id),
+    CONSTRAINT briefing_items_unique_position
+      UNIQUE (briefing_id, position) DEFERRABLE INITIALLY IMMEDIATE
+  )`,
+].join(";\n");
+
+/**
+ * Tables the two paths are compared across.
+ *
+ * stories is here because it has actually gained columns since being deployed.
+ * The rest are here because every one of them will one day gain a column too, and the trap springs the first time that happens
+ *  - on a database CI never builds, so nothing else would catch it.
+ *
+ * This is every table db/schema.sql creates, and tests/schema-probes.test.ts asserts that it stays that way.
+ * Being complete is what makes the guard stop needing to be remembered;
+ *  a list that covers most tables is one that has to be checked by hand, which is the thing that failed in phase 1.
+ */
+export const TRACKED_TABLES = [
+  "users",
+  "auth_attempts",
+  "stories",
+  "wire_sync",
+  "saved_stories",
+  "briefings",
+  "briefing_items",
+] as const;
+
+/**
+ * Copies a table's shape into the current schema, with no rows.
+ *
+ * `CREATE TABLE x AS SELECT * FROM public.x WHERE false` was written out eight times across the health tests, latterly in two styles in one case.
+ * It is how a probe test stands up a database that is right in every way except the one it is about to break.
+ */
+export async function cloneTables(
+  client: pg.PoolClient,
+  ...tables: string[]
+): Promise<void> {
+  for (const table of tables) {
+    await client.query(
+      `CREATE TABLE ${table} AS SELECT * FROM public.${table} WHERE false`
+    );
+  }
+}
+
+/**
+ * Runs `body` against a client whose search_path points at an empty schema named `name`, then drops it.
+ *
+ * search_path is reset before the connection goes back to the pool.
+ * Without that, the next test to borrow the same connection inherits a search_path naming a schema that has just been dropped - which fails in a way that has nothing to do with the test that actually broke.
  */
 export async function inThrowawaySchema<T>(
   name: string,
@@ -106,13 +207,21 @@ export async function inThrowawaySchema<T>(
 /**
  * The column counts the snapshot above is pinned at.
  *
- * A second lock on the same door. Editing the snapshot to silence a drift
- * failure now breaks this instead, which puts a deliberate decision in front
- * of anyone about to disarm the guard - and this line is the one place that
- * says out loud what the frozen shape is.
+ * A second lock on the same door.
+ * Editing the snapshot to silence a drift failure now breaks this instead, which puts a deliberate decision in front of anyone about to disarm the guard
+ *  - and this line is the one place that says out loud what the frozen shape is.
  */
 export const DEPLOYED_AT_PHASE_6_COLUMNS = {
   stories: 9,
   users: 5,
   saved_stories: 5,
+} as const;
+
+/** The same lock over the phase 8 snapshot, which contains the phase 6 one. */
+export const DEPLOYED_AT_PHASE_8_COLUMNS = {
+  ...DEPLOYED_AT_PHASE_6_COLUMNS,
+  auth_attempts: 4,
+  wire_sync: 5,
+  briefings: 9,
+  briefing_items: 5,
 } as const;

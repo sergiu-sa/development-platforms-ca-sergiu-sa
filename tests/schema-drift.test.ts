@@ -1,25 +1,18 @@
 /**
  * Schema drift tests.
  *
- * db/schema.sql declares the stories columns twice and both have to stay in
- * step:
+ * db/schema.sql declares the stories columns twice and both have to stay in step:
  *
  *   - CREATE TABLE IF NOT EXISTS builds fresh installs and the test database
- *   - ALTER TABLE ... ADD COLUMN IF NOT EXISTS migrates a database that
- *     already holds stories, because CREATE TABLE IF NOT EXISTS leaves an
- *     existing table completely untouched
+ *   - ALTER TABLE ... ADD COLUMN IF NOT EXISTS migrates a database that already holds stories, because CREATE TABLE IF NOT EXISTS leaves an existing table completely untouched
  *
- * The duplication is deliberate, but it is the same shape as the CSP being
- * declared in two files, and it fails the same way: add a column to the
- * CREATE TABLE block alone and it appears locally and in CI - where the table
- * is always built from scratch - while being silently absent in production,
- * which is the only place the ALTER path runs.
+ * The duplication is deliberate, but it is the same shape as the CSP being declared in two files, and it fails the same way:
+ * add a column to the CREATE TABLE block alone and it appears locally and in CI
+ *  - where the table is always built from scratch
+ *  - while being silently absent in production, which is the only place the ALTER path runs.
  *
- * So rather than compare the two declarations as text, these apply the real
- * file down both paths and assert they converge. Each runs inside its own
- * Postgres schema on one connection with search_path pointed at it, so the
- * unqualified names in db/schema.sql resolve there and the real tables are
- * never touched.
+ * So rather than compare the two declarations as text, these apply the real file down both paths and assert they converge.
+ * Each runs inside its own Postgres schema on one connection with search_path pointed at it, so the unqualified names in db/schema.sql resolve there and the real tables are never touched.
  */
 
 import { describe, it, expect, afterAll } from "vitest";
@@ -27,34 +20,30 @@ import { readFileSync } from "node:fs";
 import { TONE_PRECEDENCE } from "../src/modules/wire/wire.guardian.js";
 import { STORY_COLUMNS } from "../src/modules/wire/wire.columns.js";
 import { DECISIONS } from "../src/modules/desk/desk.schema.js";
+import { BRIEFING_STATUSES } from "../src/modules/briefings/briefings.schema.js";
 import { closeDatabase } from "./helpers/db.js";
 import {
-  DEPLOYED_AT_PHASE_6,
-  DEPLOYED_AT_PHASE_6_COLUMNS,
+  DEPLOYED_AT_PHASE_8,
+  DEPLOYED_AT_PHASE_8_COLUMNS,
+  TRACKED_TABLES,
   inThrowawaySchema,
 } from "./helpers/schema-sandbox.js";
 
 const schemaSql = readFileSync("db/schema.sql", "utf8");
-
-/**
- * Tables the two paths are compared across.
- *
- * stories is here because it has actually gained columns since being deployed.
- * saved_stories is here because it is the next table an API writes to, so it
- * is the next one that will.
- */
-const TRACKED_TABLES = ["stories", "saved_stories"] as const;
 
 type TrackedTable = (typeof TRACKED_TABLES)[number];
 
 /**
  * Enums whose labels are also written down in TypeScript.
  *
- * Each of these is a set that cannot be collapsed into one declaration,
- * because one half lives in Postgres and the other in code. The cases below
- * are what stop the two halves drifting.
+ * Each of these is a set that cannot be collapsed into one declaration, because one half lives in Postgres and the other in code.
+ * The cases below are what stop the two halves drifting.
  */
-const TRACKED_ENUMS = ["story_tone", "story_decision"] as const;
+const TRACKED_ENUMS = [
+  "story_tone",
+  "story_decision",
+  "briefing_status",
+] as const;
 
 type TrackedEnum = (typeof TRACKED_ENUMS)[number];
 
@@ -68,9 +57,8 @@ interface AppliedSchema {
 }
 
 /**
- * Applies db/schema.sql inside a throwaway Postgres schema and reports the
- * columns each tracked table ends up with. `before` runs first, so a caller
- * can stand up the old tables and exercise the migration path.
+ * Applies db/schema.sql inside a throwaway Postgres schema and reports the columns each tracked table ends up with.
+ * `before` runs first, so a caller can stand up the old tables and exercise the migration path.
  */
 async function applySchemaIn(
   name: "drift_fresh" | "drift_legacy",
@@ -116,8 +104,8 @@ async function applySchemaIn(
       ])
     ) as Record<TrackedTable, string[]>;
 
-    // Sorted by label rather than by enum position: the order Postgres stores
-    // them in carries no meaning here, only which labels exist.
+    // Sorted by label rather than by enum position:
+    // the order Postgres storesthem in carries no meaning here, only which labels exist.
     const { rows: labels } = await client.query<{
       typname: TrackedEnum;
       enumlabel: string;
@@ -147,12 +135,11 @@ async function applySchemaIn(
 afterAll(closeDatabase);
 
 describe("db/schema.sql applied to an existing database", () => {
-  // One case per tracked table rather than one loop over both, so a failure
-  // names the table in its title instead of only in the diff.
+  // One case per tracked table rather than one loop over both, so a failure names the table in its title instead of only in the diff.
   for (const table of TRACKED_TABLES) {
     it(`reaches the same ${table} columns as a fresh install`, async () => {
       const fresh = await applySchemaIn("drift_fresh");
-      const migrated = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_6);
+      const migrated = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_8);
 
       const missing = fresh.columns[table].filter(
         (column) => !migrated.columns[table].includes(column)
@@ -168,18 +155,17 @@ describe("db/schema.sql applied to an existing database", () => {
 
       expect(migrated.columns[table]).toEqual(fresh.columns[table]);
 
-      // Guards against both sides passing vacuously: a table that was never
-      // created would give two empty, equal lists.
+      // Guards against both sides passing vacuously: a table that was never created would give two empty, equal lists.
       expect(fresh.columns[table].length).toBeGreaterThan(0);
     });
   }
 
-  // The snapshot the whole convergence check rests on. Editing it is the wrong
-  // way to silence a drift failure, because it disarms the guard permanently
-  // rather than fixing the schema - so an edit has to break something loud.
+  // The snapshot the whole convergence check rests on.
+  // Editing it is the wrong way to silence a drift failure, because it disarms the guard permanently rather than fixing the schema
+  //  - so an edit has to break something loud.
   it("keeps the deployed snapshot frozen", async () => {
     const migrated = await inThrowawaySchema("drift_frozen", async (client) => {
-      await client.query(DEPLOYED_AT_PHASE_6);
+      await client.query(DEPLOYED_AT_PHASE_8);
 
       const { rows } = await client.query<{
         table_name: string;
@@ -198,26 +184,25 @@ describe("db/schema.sql applied to an existing database", () => {
 
     expect(
       migrated,
-      "DEPLOYED_AT_PHASE_6 in tests/helpers/schema-sandbox.ts is a frozen " +
-        "record of what production looked like when phase 6 shipped. If you " +
-        "changed it to make a drift failure go away, that failure was real: " +
-        "write the ALTER TABLE instead."
-    ).toEqual(DEPLOYED_AT_PHASE_6_COLUMNS);
+      "DEPLOYED_AT_PHASE_8 in tests/helpers/schema-sandbox.ts is a frozen " +
+        "record of what production looked like when phase 8 shipped, and it " +
+        "contains the phase 6 snapshot. If you changed either to make a drift " +
+        "failure go away, that failure was real: write the ALTER TABLE instead."
+    ).toEqual(DEPLOYED_AT_PHASE_8_COLUMNS);
   });
 
-  // The deployed table has rows. Migrating must not drop them, and tone has to
-  // land on its default rather than null against a NOT NULL column.
+  // The deployed table has rows.
+  // Migrating must not drop them, and tone has to land on its default rather than null against a NOT NULL column.
   it("keeps existing rows and defaults their tone", async () => {
-    const migrated = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_6);
+    const migrated = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_8);
 
     expect(migrated.seededTone).toBe("news");
   });
 
-  // The set of tones exists in two places that cannot be collapsed: the enum
-  // here and TONE_PRECEDENCE in the Guardian client. A tone in the code but not
-  // the enum makes the bulk upsert throw, and refreshIfNeeded() swallows
-  // refresh failures on purpose - so the wire would serve stale content
-  // indefinitely with nothing logged as the cause.
+  // The set of tones exists in two places that cannot be collapsed:
+  // the enum here and TONE_PRECEDENCE in the Guardian client.
+  // A tone in the code but not the enum makes the bulk upsert throw, and refreshIfNeeded() swallows refresh failures on purpose
+  //  - so the wire would serve stale content indefinitely with nothing logged as the cause.
   it("declares exactly the tones the Guardian client resolves", async () => {
     const fresh = await applySchemaIn("drift_fresh");
     const fromCode = [...TONE_PRECEDENCE].sort();
@@ -232,9 +217,8 @@ describe("db/schema.sql applied to an existing database", () => {
     ).toEqual(fromCode);
   });
 
-  // The same pair, one table along. A decision the API accepts but the enum
-  // does not have makes every write of it fail - louder than the tone version,
-  // which fails inside a swallowed refresh, but just as avoidable.
+  // The same pair, one table along. A decision the API accepts but the enum does not have makes every write of it fail
+  //  - louder than the tone version, which fails inside a swallowed refresh, but just as avoidable.
   it("declares exactly the decisions the desk accepts", async () => {
     const fresh = await applySchemaIn("drift_fresh");
     const fromCode = [...DECISIONS].sort();
@@ -249,18 +233,30 @@ describe("db/schema.sql applied to an existing database", () => {
     ).toEqual(fromCode);
   });
 
-  // The static half of the health check, and the guard that stops the first
-  // assertion passing vacuously - if stories were never created, both column
-  // lists would be empty and equal, but STORY_COLUMNS would not be a subset.
+  // The same pair again, two tables along. status decides whether a briefingis visible to anybody but its author, so a label the API accepts and the enum does not would fail every attempt to file one.
+  it("declares exactly the statuses a briefing can hold", async () => {
+    const fresh = await applySchemaIn("drift_fresh");
+    const fromCode = [...BRIEFING_STATUSES].sort();
+
+    expect(
+      fresh.enumLabels.briefing_status,
+      "The briefing_status enum in db/schema.sql and BRIEFING_STATUSES in " +
+        "src/modules/briefings/briefings.schema.ts have drifted apart. Both " +
+        "must list the same statuses:\n" +
+        `    schema.sql:       ${fresh.enumLabels.briefing_status.join(", ")}\n` +
+        `    briefings schema: ${fromCode.join(", ")}`
+    ).toEqual(fromCode);
+  });
+
+  // The static half of the health check, and the guard that stops the first assertion passing vacuously
+  //  - if stories were never created, both column lists would be empty and equal, but STORY_COLUMNS would not be a subset.
   //
-  // /api/health asks a running database whether it has these columns; this
-  // asks db/schema.sql whether it would ever produce them, down both the fresh
-  // and the migrated path. A column added to the wire query but forgotten in
-  // the schema file fails here, at the cheapest possible moment, rather than
-  // as a 42703 in production.
+  // /api/health asks a running database whether it has these columns;
+  // this asks db/schema.sql whether it would ever produce them, down both the fresh and the migrated path.
+  // A column added to the wire query but forgotten in the schema file fails here, at the cheapest possible moment, rather than as a 42703 in production.
   it("produces every column the wire query selects, down both paths", async () => {
     const fresh = await applySchemaIn("drift_fresh");
-    const migrated = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_6);
+    const migrated = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_8);
 
     const missingFresh = STORY_COLUMNS.filter(
       (column) => !fresh.columns.stories.includes(column)
@@ -284,10 +280,10 @@ describe("db/schema.sql applied to an existing database", () => {
   });
 
   it("is safe to run twice", async () => {
-    const once = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_6);
+    const once = await applySchemaIn("drift_legacy", DEPLOYED_AT_PHASE_8);
 
     const twice = await inThrowawaySchema("drift_legacy", async (client) => {
-      await client.query(DEPLOYED_AT_PHASE_6);
+      await client.query(DEPLOYED_AT_PHASE_8);
       await client.query(schemaSql);
       await client.query(schemaSql);
 
