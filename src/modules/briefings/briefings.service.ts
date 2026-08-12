@@ -47,6 +47,17 @@ export interface BriefingSummary {
    */
   author: { username: string };
   itemCount: number;
+  /**
+   * The lede's photograph, for a card that stands for the whole briefing.
+   *
+   * Position 1, which is the lede by definition rather than by a flag.
+   * The wide image where the story has one and the thumbnail otherwise, matching what `storyImage` picks on the client, and null for a briefing holding nothing;
+   * which only a draft can be.
+   *
+   * Deliberately the only story field the listing carries.
+   * A reading time would mean summing word counts and excluding live blogs in SQL, which is the rule `readingTimeMinutes` already owns, and a second copy of it in another language is how the two drift.
+   */
+  ledeImageUrl: string | null;
 }
 
 /** One story in a briefing, with the curator's note on it. */
@@ -128,6 +139,7 @@ interface BriefingRow {
   updated_at: Date;
   username: string;
   item_count: number;
+  lede_image_url: string | null;
 }
 
 interface ItemRow extends StoryColumnsRow {
@@ -155,6 +167,7 @@ function toSummary(row: BriefingRow): BriefingSummary {
     updatedAt: row.updated_at.toISOString(),
     author: { username: row.username },
     itemCount: row.item_count,
+    ledeImageUrl: row.lede_image_url,
   };
 }
 
@@ -177,7 +190,13 @@ export const BRIEFING_FIELDS = `briefing.id, briefing.slug, briefing.title,
          author.username,
          (SELECT count(*)
             FROM briefing_items item
-           WHERE item.briefing_id = briefing.id)::int AS item_count`;
+           WHERE item.briefing_id = briefing.id)::int AS item_count,
+         (SELECT coalesce(story.image_url, story.thumbnail_url)
+            FROM briefing_items item
+            JOIN stories story ON story.id = item.story_id
+           WHERE item.briefing_id = briefing.id
+           ORDER BY item.position
+           LIMIT 1) AS lede_image_url`;
 
 const BRIEFING_SOURCE = `FROM briefings briefing
        JOIN users author ON author.id = briefing.author_id`;
