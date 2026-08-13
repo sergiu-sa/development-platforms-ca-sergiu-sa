@@ -45,10 +45,11 @@
 
   --color-rule: rgb(11 11 12 / 0.22);
 
-  /* The machine reports in mono, the wire is drawn in grotesque.
-  Fraunces is the third role;
-  the curator's voice - and is deliberately NOT loaded until /b/:slug exists in phase 9, because it costs ~81 KB and nothing before that
-     page uses it. */
+  /* The machine reports in mono, the wire is drawn in grotesque, and there is no third face.
+  The design system originally gave the curator's voice a serif, loaded only on /b/:slug.
+  Phase 9 dropped it: Bricolage is already on every page, so the briefing's voice costs nothing here, where a third family cost roughly eighty kilobytes for a face nothing else used.
+  Archivo was considered and rejected for the same reason it was removed in phase 2 - a second grotesque beside the first with no division of labour between them.
+  The voice is separated from the wire by axis instead: light and wide against the headline's semibold and narrow. See the briefing view spec. */
   --font-grot:
     "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Martian Mono Variable", ui-monospace, SFMono-Regular, monospace;
@@ -1471,14 +1472,332 @@ only the rule under it differs, because this one is not separating a header from
 
 /* An empty desk is an invitation, never a shrug and deliberately without `-30-`, which the design spec spends in exactly two places: the deck's cleared state and the footer.
 A third use would make it decoration. */
-.desk-empty {
+.desk-empty,
+.briefing-message {
   max-width: 42rem;
   margin: 4rem auto 6rem;
   text-align: center;
 }
 
-.desk-empty .note {
-  margin: 1rem auto 2rem;
+/* The only thing the briefing's version needs that the desk's does not: it can be the whole page, so it cannot sit against the viewport edge. */
+.briefing-message {
+  padding: 0 1.25rem;
+}
+
+.desk-empty .note,
+/* ---- the briefing ----
+   The story stands alone on the left, the whole briefing stands on the right, and switching costs one click or one arrow key.
+   Prefixed throughout because `.note` is already the primitive phase 3 built for explanatory sentences, and the curator's note is a different thing at a different size. */
+
+.briefing {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+/* The stage is written second in the document so the briefing's title, which is the h1, comes before a story headline, which is an h2.
+Placed explicitly rather than left to source order, so the reading order and the heading outline can differ on purpose. */
+.briefing-stage {
+  grid-column: 1;
+  grid-row: 1;
+  padding: clamp(1.5rem, 3.5vw, 3rem);
+  display: grid;
+  align-content: center;
+  gap: 1.1rem;
+  max-width: 56rem;
+  min-width: 0;
+}
+
+/* The curator's voice.
+Same family as the wire, separated by axis rather than by typeface: light and wide against the headline's semibold and narrow.
+The design system originally gave this a serif; phase 9 dropped it because Bricolage is already loaded on every page and a third family was paid for by every visitor to buy a distinction one axis pair already makes.
+The comment card sets a writer's own name low-weight for the same reason, so this is the system's move rather than a new one. */
+.briefing-note {
+  font-family: var(--font-grot);
+  font-variation-settings:
+    "opsz" 96,
+    "wght" 300,
+    "wdth" 100;
+  font-size: clamp(1.5rem, 2.5vw, 2.35rem);
+  line-height: 1.24;
+  letter-spacing: -0.022em;
+  max-width: 28ch;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+/* Capped so the note, the photograph, the headline and the way out to the source all sit above the fold together.
+The action is the point of the page, and a pedestal you have to scroll to act on is not a pedestal. */
+.briefing-shot {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  max-height: 36dvh;
+  object-fit: cover;
+  object-position: 50% 30%;
+  background: var(--color-paper-3);
+}
+
+.briefing-figure {
+  margin: 0;
+}
+
+.briefing-credit {
+  margin: 0.5rem 0 0;
+}
+
+.briefing-headline {
+  font-family: var(--font-grot);
+  font-variation-settings:
+    "wght" 600,
+    "wdth" 92,
+    "opsz" 32;
+  font-size: clamp(1.1rem, 1.5vw, 1.4rem);
+  line-height: 1.18;
+  max-width: 34ch;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.briefing-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  align-items: center;
+}
+
+/* The one blue action on the page: the way out to the source.
+Blue is the reader's hand everywhere in this product, and following a link to the article is the reader's move. */
+.briefing-read {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.3rem;
+  background: var(--color-blue);
+  color: var(--color-paper);
+  text-decoration: none;
+}
+
+.briefing-read:hover {
+  background: var(--color-ink);
+}
+
+.briefing-index {
+  grid-column: 2;
+  grid-row: 1;
+  border-left: 1px solid var(--color-rule);
+  padding: clamp(1.25rem, 2.5vw, 2rem) clamp(1rem, 2vw, 1.5rem);
+  display: grid;
+  align-content: start;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.briefing-index-head {
+  display: grid;
+  gap: 0.75rem;
+  padding-bottom: 1.25rem;
+}
+
+.briefing-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* A filled mark carrying no glyph, so it may be the hot blue.
+Blue is the reader's hand throughout this product, and a briefing is something somebody chose to file.
+Decorative rather than informative - the word "Briefing" beside it carries the meaning - so it is hidden from assistive technology instead of being given a label that would say the same thing twice. */
+.briefing-mark {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  background: var(--color-blue);
+}
+
+/* One display voice, worn by three things: the briefing's title, the shelf's heading and a card's title.
+Written once because they are one role rather than three - three copies of the same axis triple is how a voice drifts, and two of these had already picked different tracking on the day they were written. Size and leading stay per use. */
+.briefing-title,
+.shelf-title,
+.bcard-title {
+  font-family: var(--font-grot);
+  font-variation-settings:
+    "opsz" 96,
+    "wght" 400,
+    "wdth" 100;
+  letter-spacing: -0.025em;
+}
+
+.briefing-title {
+  font-size: clamp(1.55rem, 2.1vw, 2rem);
+  line-height: 1.08;
+  margin: 0;
+}
+
+/* Held a step heavier than the note: at the prose floor a light weight goes thin enough to read as low contrast, which is a legibility problem rather than a taste one.
+Shared with the card's intro, which is the same sentence doing the same job - they were written minutes apart and had already picked different leading. */
+.briefing-intro,
+.bcard-intro {
+  font-variation-settings:
+    "opsz" 14,
+    "wght" 400,
+    "wdth" 100;
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.briefing-entry {
+  display: grid;
+  grid-template-columns: 1.9rem 56px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.75rem 0;
+  /* border, background, colour and the pointer already come from the global button reset. */
+  border-top: 1px solid var(--color-rule);
+  text-align: left;
+  width: 100%;
+}
+
+.briefing-entry:hover {
+  background: var(--color-paper-2);
+}
+
+/* The current story carries a tint AND a blue number AND aria-current, because colour is never the only signal. */
+.briefing-entry[aria-current="true"] {
+  background: var(--color-paper-2);
+}
+
+.briefing-entry[aria-current="true"] .briefing-entry-n {
+  color: var(--color-blue);
+}
+
+.briefing-entry[aria-current="false"] .briefing-entry-title {
+  opacity: 0.72;
+}
+
+.briefing-thumb {
+  width: 56px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  object-position: 50% 30%;
+  background: var(--color-paper-3);
+}
+
+.briefing-entry-title {
+  font-variation-settings:
+    "wght" 500,
+    "wdth" 88;
+  font-size: 15px;
+  line-height: 1.22;
+}
+
+.briefing-foot {
+  padding-top: 1.25rem;
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+
+/* A draft is visible to its author and nobody else, so the page says so rather than looking published. */
+.briefing-draft {
+  padding: 0.6rem 1rem;
+  background: var(--color-paper-2);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+/* ---- the briefings shelf ----
+   One card per filed briefing. Kept in its own block because phase 11's curator page shows the same card for one person's briefings, and the only difference there is which briefings it is handed. */
+
+/* Shares the card column's width and padding, so the header and the cards sit on one gutter rather than two. */
+.shelf-head {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 6vw, 4.5rem) 1.25rem 1.5rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.shelf-title {
+  font-size: clamp(2rem, 4.5vw, 3.2rem);
+  line-height: 1.02;
+  margin: 0;
+}
+
+.shelf-line {
+  margin: 0;
+}
+
+.bcards {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0 1.25rem 6rem;
+  max-width: 60rem;
+  display: grid;
+}
+
+.bcard {
+  border-top: 1px solid var(--color-rule);
+}
+
+.bcard:last-child {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+/* The whole card is the link, so the target is the card rather than the title alone
+ - and it is an anchor rather than a click handler, because a briefing has a real address worth copying, opening in a new tab, and sharing. */
+.bcard-link {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+  padding: 1.5rem 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.bcard-link:hover {
+  background: var(--color-paper-2);
+}
+
+.bcard-shot {
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  object-position: 50% 30%;
+  background: var(--color-paper-3);
+  display: block;
+}
+
+.bcard-words {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.bcard-title {
+  font-size: clamp(1.35rem, 2.2vw, 1.9rem);
+  line-height: 1.1;
+}
+
+.bcard-link:hover .bcard-title {
+  text-decoration: underline;
+  text-decoration-color: var(--color-blue);
+  text-underline-offset: 4px;
+}
+
+.bcard-intro {
+  max-width: 52ch;
+}
+
+.bcard-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  align-items: baseline;
 }
 
 /* ---- narrow widths ----
@@ -1489,6 +1808,49 @@ A third use would make it decoration. */
 @media (max-width: 1100px) {
   .band {
     grid-template-columns: 4.5rem 13rem minmax(0, 1fr);
+  }
+
+  /* The spread stacks here rather than at a breakpoint of its own.
+  Below this the index column is narrower than its own thumbnails plus two lines of headline, so the two panes stop being a spread and become a squeeze. */
+  .briefing {
+    grid-template-columns: 1fr;
+  }
+
+  /* Both are placed explicitly at wide widths, so both have to be placed again here or they would land in the same cell and paint over each other.
+  The story leads and the contents follow it, which is the same order as the wide layout read left to right. */
+  .briefing-stage {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .briefing-index {
+    grid-column: 1;
+    grid-row: 2;
+    position: static;
+    height: auto;
+    border-left: 0;
+    border-top: 1px solid var(--color-rule);
+  }
+
+  /* Free once the photograph has the full width rather than two thirds of it. */
+  .briefing-shot {
+    max-height: none;
+  }
+
+  /* The arrow keys still work for anyone with a keyboard at this width, but the layout has stacked because the screen is narrow, and telling a phone about arrow keys is furniture that means nothing.
+  The index below is the way to move, and it is tappable. */
+  .briefing-keys {
+    display: none;
+  }
+
+  /* The photograph goes above the words rather than beside them: at this width a 180px column leaves the title about twelve characters, which wraps to five lines. */
+  .bcard-link {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .bcard-shot {
+    aspect-ratio: 16 / 9;
   }
 
   .ed-lead .card {
@@ -1549,7 +1911,17 @@ A third use would make it decoration. */
     padding-right: 0;
   }
 
+  /* The bar has room for the wordmark and the account nav and nothing else at
+  this width. The wordmark is still the way back to the wire, so the labelled
+  control is the one that goes. */
   .deskbar-back {
+    display: none;
+  }
+
+  /* Goes with it, and before it: a way out of a page outranks a way further in,
+  so if only one of the two could stay it would not be this one. Briefings are
+  still reachable from the wire's own spine, which this width keeps. */
+  .deskbar-briefings {
     display: none;
   }
 
