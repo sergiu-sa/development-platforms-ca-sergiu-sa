@@ -18,6 +18,10 @@ import {
   briefingRoutes,
   publicBriefingRoutes,
 } from "./modules/briefings/briefings.route.js";
+import {
+  briefingPageRoutes,
+  briefingPublicPageRoutes,
+} from "./modules/briefings/briefing-page.route.js";
 import { curatorRoutes } from "./modules/briefings/curators.route.js";
 
 // strict: false so a trailing slash means the same route.
@@ -123,6 +127,10 @@ api.route("/desk", deskRoutes);
 // Two routers make the split instead, and the order is load-bearing:
 // Hono runs matched handlers in registration order, so the public reads must be mounted first or the private router's blanket middleware would 401 them.
 // The header of briefings.route.ts has the full reasoning and the one consequence.
+// The document behind /b/:slug, which vercel.json rewrites to this path.
+// It only has to precede the PRIVATE router, whose blanket middleware would otherwise answer 401 to a public read.
+// Its path is two segments, so the public "/:slug" cannot shadow it in either order.
+api.route("/briefings", briefingPageRoutes);
 api.route("/briefings", publicBriefingRoutes);
 api.route("/briefings", briefingRoutes);
 api.route("/curators", curatorRoutes);
@@ -144,6 +152,13 @@ if (config.allowedOrigins.length > 0) {
 }
 
 app.route("/api", api);
+
+// The one path this server owns that does not live under /api, and it has to.
+//
+// vercel.json rewrites /b/:slug to the API path above, which is what gets the request to the function - but hono/vercel rebuilds the request from the ORIGINAL url, so the router sees /b/:slug and nothing else.
+// Mounted only here, the page 404'd on a real deployment while every local check passed.
+// briefing-page.route.ts has the full account.
+app.route("/b", briefingPublicPageRoutes);
 
 // API only, deliberately.
 // The frontend is served by src/index.ts in local development and by Vercel's CDN in production, so nothing in here may depend on a Node server being present;

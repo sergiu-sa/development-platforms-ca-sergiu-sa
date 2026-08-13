@@ -9,8 +9,8 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import { pool } from "../src/db/connection.js";
 import { createSchema, resetDatabase, closeDatabase } from "./helpers/db.js";
-import { seedStories } from "./helpers/seed.js";
-import { get, post, patch, registerAndLogin } from "./helpers/request.js";
+import { fileBriefing } from "./helpers/seed.js";
+import { get, patch, post, registerAndLogin } from "./helpers/request.js";
 import {
   BRIEFINGS_PAGE_SIZE,
   MAX_BRIEFINGS_PAGE,
@@ -19,39 +19,6 @@ import {
 beforeAll(createSchema);
 beforeEach(resetDatabase);
 afterAll(closeDatabase);
-
-/** A briefing with one story, filed unless `file` says otherwise. */
-async function fileBriefing(
-  token: string,
-  title: string,
-  options: { file?: boolean; note?: string } = {}
-) {
-  const created = await post("/api/briefings", { title }, token);
-  expect(created.status).toBe(201);
-  const briefing = created.body.briefing;
-  const [storyId] = await seedStories(1);
-
-  // Checked rather than assumed. Unchecked, a regression in the write path surfaces as an undefined slug three tests later, naming the wrong thing.
-  const added = await post(
-    `/api/briefings/${briefing.id}/items`,
-    { storyId, note: options.note ?? "Why this matters" },
-    token
-  );
-  expect(added.status).toBe(201);
-
-  if (options.file !== false) {
-    const filed = await patch(
-      `/api/briefings/${briefing.id}`,
-      { status: "published" },
-      token
-    );
-    expect(filed.status).toBe(200);
-
-    return { ...filed.body.briefing, storyId };
-  }
-
-  return { ...briefing, storyId };
-}
 
 describe("the public listing", () => {
   it("carries filed briefings, newest first", async () => {
@@ -69,6 +36,28 @@ describe("the public listing", () => {
     expect(response.body.briefings[0].itemCount).toBe(1);
   });
 
+  it("carries the lede's photograph, so a card can stand for the briefing", async () => {
+    const { token } = await registerAndLogin("list-image@example.com");
+    await fileBriefing(token, "With a picture");
+
+    const response = await get("/api/briefings");
+
+    // The wide image, which is what the client would pick for itself.
+    expect(response.body.briefings[0].ledeImageUrl).toMatch(/1000\.jpg$/);
+  });
+
+  it("reports no picture for a briefing holding no stories", async () => {
+    // Only a draft can be empty, and drafts are absent from this listing, so the null branch is reached through the author's own shelf instead.
+    const { token } = await registerAndLogin("list-empty@example.com");
+    const created = await post(
+      "/api/briefings",
+      { title: "Nothing in it" },
+      token
+    );
+
+    expect(created.body.briefing.ledeImageUrl).toBeNull();
+  });
+
   it("leaves a draft out, including for its own author", async () => {
     const { token } = await registerAndLogin("draft-list@example.com");
     const filed = await fileBriefing(token, "A filed one");
@@ -77,8 +66,7 @@ describe("the public listing", () => {
     const anonymous = await get("/api/briefings");
     const asAuthor = await get("/api/briefings", token);
 
-    // The filed one is the control: without it, both assertions below would
-    // hold for a listing that returned nothing at all.
+    // The filed one is the control: without it, both assertions below would hold for a listing that returned nothing at all.
     expect(
       anonymous.body.briefings.map((b: { slug: string }) => b.slug)
     ).toEqual([filed.slug]);

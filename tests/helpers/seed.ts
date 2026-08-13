@@ -9,7 +9,9 @@
  * It can adopt this the next time it is touched.
  */
 
+import { expect } from "vitest";
 import { pool } from "../../src/db/connection.js";
+import { patch, post } from "./request.js";
 
 /**
  * How many stories have been seeded in this process so far.
@@ -21,12 +23,11 @@ import { pool } from "../../src/db/connection.js";
 let seeded = 0;
 
 /**
- * Inserts `count` stories and returns their ids, **newest first**: story n is
- * published n minutes ago, so the first id returned is the most recent.
+ * Inserts `count` stories and returns their ids, **newest first**:
+ * story n is published n minutes ago, so the first id returned is the most recent.
  *
- * Worth stating precisely, because the comment used to say the opposite and
- * nothing depended on it. The first test written about ordering on top of a
- * wrong sentence would have looked like an implementation bug.
+ * Worth stating precisely, because the comment used to say the opposite and nothing depended on it.
+ * The first test written about ordering on top of a wrong sentence would have looked like an implementation bug.
  *
  * Every optional column is filled.
  * They are all nullable, so a test that only wants ids is unaffected by getting them, and a test that renders a story does not need a second seeder to get a byline.
@@ -58,4 +59,44 @@ export async function seedStories(count = 3): Promise<number[]> {
   );
 
   return rows.map((row) => row.id);
+}
+
+/**
+ * A briefing with one story, filed unless `file` says otherwise.
+ *
+ * Lived in `briefings-read.test.ts` until the page route needed the same thing.
+ * Moved here rather than copied, for the reason at the top of this file:
+ * a third description of "how a briefing gets made" is a third edit every time the write path changes, and the copies drift apart quietly.
+ *
+ * Each step is asserted rather than assumed. Unchecked, a regression in the write path surfaces as an undefined slug three tests later, naming the wrong thing.
+ */
+export async function fileBriefing(
+  token: string,
+  title: string,
+  options: { file?: boolean; note?: string } = {}
+) {
+  const created = await post("/api/briefings", { title }, token);
+  expect(created.status).toBe(201);
+  const briefing = created.body.briefing;
+  const [storyId] = await seedStories(1);
+
+  const added = await post(
+    `/api/briefings/${briefing.id}/items`,
+    { storyId, note: options.note ?? "Why this matters" },
+    token
+  );
+  expect(added.status).toBe(201);
+
+  if (options.file !== false) {
+    const filed = await patch(
+      `/api/briefings/${briefing.id}`,
+      { status: "published" },
+      token
+    );
+    expect(filed.status).toBe(200);
+
+    return { ...filed.body.briefing, storyId };
+  }
+
+  return { ...briefing, storyId };
 }

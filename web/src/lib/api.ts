@@ -151,6 +151,28 @@ export async function getDeskEdition(from: string, to: string) {
   return apiRequest(`/desk?${params}`);
 }
 
+/**
+ * One briefing by its public address.
+ *
+ * Returns the whole `ApiResult` rather than just the body, because the reading view has to tell "there is no such briefing" from "we could not ask":
+ *
+ * the first is a designed page and the second is an error with a retry.
+ * A 404 here is also the answer a stranger gets for somebody else's draft, so the page must never treat it as a failure to report.
+ */
+export async function getBriefing(slug: string): Promise<ApiResult> {
+  return request(`/briefings/${encodeURIComponent(slug)}`);
+}
+
+/**
+ * Filed briefings, newest first. Published only, whoever is asking.
+ *
+ * No page argument: the endpoint defaults to the first page and nothing here pages yet.
+ * Phase 11's curator shelf can add one when it has somewhere to put the control.
+ */
+export async function getBriefings(): Promise<ApiResult> {
+  return request("/briefings");
+}
+
 export async function putDeskDecision(
   storyId: number,
   state: "saved" | "skipped"

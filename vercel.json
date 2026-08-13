@@ -7,7 +7,10 @@
 
   "regions": ["fra1"],
 
-  "rewrites": [{ "source": "/api/:path*", "destination": "/api" }],
+  "rewrites": [
+    { "source": "/b/:slug", "destination": "/api/briefings/:slug/page" },
+    { "source": "/api/:path*", "destination": "/api" }
+  ],
 
   "functions": {
     "api/index.ts": {
@@ -28,6 +31,15 @@
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(briefing.js|lede.css)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     }

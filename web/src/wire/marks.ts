@@ -19,7 +19,7 @@ import type { Story } from "./types";
  * Not `cardVariant(...) === "live"`: that is the card's presentation decision, and a change to its precedence should not silently move the row's dot.
  * The tag is authoritative and the headline is never consulted.
  */
-function isLive(tone: string): boolean {
+export function isLive(tone: string): boolean {
   return tone === "minutebyminute";
 }
 
@@ -141,9 +141,19 @@ export function guardianLink(
   const href = safeUrl(url);
   if (!href) return "";
 
+  // `label` and `spoken` are escaped here rather than by the caller.
+  //
+  // They were not, and the three callers were safe only by what they happened to pass:
+  // one sends the empty string, one sends a value it had already escaped for a different purpose, and the third sent a raw Guardian headline.
+  // A headline can genuinely hold markup;
+  // `plainText` strips tags before it decodes entities, so an encoded `&lt;a&gt;` arrives in the column as a real one;
+  // which put an attacker-authored link inside a briefing.
+  //
+  // Escaping in here makes the next caller safe without having to know that.
   return (
     `<a class="${className}" href="${escapeHtml(href)}" target="_blank" ` +
-    `rel="noopener noreferrer">${label} <span aria-hidden="true">&#8599;</span>` +
-    `<span class="sr-only">${spoken} (opens in a new tab)</span></a>`
+    `rel="noopener noreferrer">${escapeHtml(label)} ` +
+    `<span aria-hidden="true">&#8599;</span>` +
+    `<span class="sr-only">${escapeHtml(spoken)} (opens in a new tab)</span></a>`
   );
 }
