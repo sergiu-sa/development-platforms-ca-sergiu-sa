@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Briefings - Lede</title>
+    <meta
+      name="description"
+      content="Briefings filed by curators, newest first."
+    />
+  </head>
+  <body>
+    <!-- The same thin utility bar the desk carries. This page has no deck behind it either, so there are no counts to keep on screen. -->
+    <div class="deskbar">
+      <a href="/index.html" class="word">Lede<b>.</b></a>
+      <a href="/index.html" class="btn m deskbar-back">
+        <span aria-hidden="true">&larr;</span>
+        <span>Back to the wire</span>
+      </a>
+      <nav class="top-nav m" aria-label="Account">
+        <a href="/login.html" id="nav-login" class="nav-link">Log in</a>
+        <span id="nav-user" class="quiet top-nav-user" hidden></span>
+        <button id="nav-logout" class="nav-link" type="button" hidden>
+          Log out
+        </button>
+      </nav>
+    </div>
+
+    <main>
+      <!-- Not the desk's masthead: that one dates an edition and centres a display title, which says "this is one day's paper".
+       This is a shelf, and its header lines up with the cards under it. -->
+      <header class="shelf-head">
+        <p class="briefing-kicker m">
+          <span class="briefing-mark" aria-hidden="true"></span> Briefings
+        </p>
+        <h1 class="shelf-title">Filed by curators</h1>
+        <p class="shelf-line m quiet">
+          The stories are the Guardian's. The writing is theirs.
+        </p>
+      </header>
+
+      <div id="briefings">
+        <p class="m quiet">Loading briefings...</p>
+      </div>
+    </main>
+
+    <footer class="foot m quiet">
+      <span>Lede</span>
+      <span>Stories &copy; Guardian News &amp; Media</span>
+      <span aria-hidden="true">-30-</span>
+    </footer>
+
+    <script type="module" src="/src/pages/briefings.ts"></script>
+  </body>
+</html>

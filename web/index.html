@@ -97,8 +97,7 @@
       </button>
     </div>
 
-    <!-- The live region. Always in the document and never display:
-     none, which is what makes a screen reader announce a change to it.
+    <!-- The live region. Always in the document and never display: none, which is what makes a screen reader announce a change to it.
      The toast above is aria-hidden apart from its button, so each decision is announced exactly once. -->
     <p class="sr-only" id="deck-announcer" role="status"></p>
 
@@ -108,6 +107,9 @@
       <header class="spine" id="spine">
         <a href="/index.html" class="word">Lede<b>.</b></a>
         <span class="m quiet" id="spine-count"></span>
+        <!-- Public, so unlike the desk it is shown to everybody.
+           Briefings are the thing this product is for and they had no way in at all until now. -->
+        <a class="btn m" href="/briefings.html">Briefings</a>
         <!-- Shown to a signed-in reader only:
          a signed-out one has no desk to go to, and the tray offers them the sign-in that would give them
              one. -->
