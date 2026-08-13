@@ -18,6 +18,7 @@ import {
   briefingRoutes,
   publicBriefingRoutes,
 } from "./modules/briefings/briefings.route.js";
+import { briefingPageRoutes } from "./modules/briefings/briefing-page.route.js";
 import { curatorRoutes } from "./modules/briefings/curators.route.js";
 
 // strict: false so a trailing slash means the same route.
@@ -123,6 +124,10 @@ api.route("/desk", deskRoutes);
 // Two routers make the split instead, and the order is load-bearing:
 // Hono runs matched handlers in registration order, so the public reads must be mounted first or the private router's blanket middleware would 401 them.
 // The header of briefings.route.ts has the full reasoning and the one consequence.
+// The document behind /b/:slug, which vercel.json rewrites to this path.
+// It only has to precede the PRIVATE router, whose blanket middleware would otherwise answer 401 to a public read.
+// Its path is two segments, so the public "/:slug" cannot shadow it in either order.
+api.route("/briefings", briefingPageRoutes);
 api.route("/briefings", publicBriefingRoutes);
 api.route("/briefings", briefingRoutes);
 api.route("/curators", curatorRoutes);

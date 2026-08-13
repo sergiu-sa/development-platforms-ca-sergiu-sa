@@ -33,6 +33,27 @@ async function toApiResponse(response: Response): Promise<ApiResponse> {
   }
 }
 
+/**
+ * A route that answers with a document rather than JSON.
+ *
+ * `get` would fold an HTML body into `{ raw }` and throw the headers away, which is no use to a page whose whole job is its content type and its meta tags.
+ * Headers are passed through rather than built, because the one thing worth varying here is the forwarded host.
+ */
+export async function getDocument(
+  path: string,
+  headers: Record<string, string> = {}
+): Promise<{ status: number; html: string; contentType: string | null }> {
+  const response = await app.fetch(
+    new Request(`http://localhost${path}`, { method: "GET", headers })
+  );
+
+  return {
+    status: response.status,
+    html: await response.text(),
+    contentType: response.headers.get("content-type"),
+  };
+}
+
 export async function get(path: string, token?: string): Promise<ApiResponse> {
   const response = await app.fetch(
     new Request(`http://localhost${path}`, {
