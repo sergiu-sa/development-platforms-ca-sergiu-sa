@@ -195,6 +195,29 @@ describe("GET /api/briefings/:slug/page", () => {
   beforeEach(resetDatabase);
   afterAll(closeDatabase);
 
+  it("serves the same document at the public /b/:slug path", async () => {
+    // The path a reader's browser actually asks for, and the one that was missing.
+    // hono/vercel rebuilds the request from the ORIGINAL url, so vercel.json's rewrite never reaches the router: on a real deployment the function ran, saw /b/:slug, and answered its own 404 while every local check passed against the API path below.
+    const { token } = await registerAndLogin("page-public@example.com");
+    const briefing = await fileBriefing(token, "Reachable at its own address");
+
+    const pretty = await getDocument(`/b/${briefing.slug}`);
+    const api = await getDocument(`/api/briefings/${briefing.slug}/page`);
+
+    expect(pretty.status).toBe(200);
+    expect(pretty.contentType).toContain("text/html");
+    expect(pretty.html).toContain("Reachable at its own address");
+    // One handler, so the two paths cannot drift into different documents.
+    expect(pretty.html).toBe(api.html);
+  });
+
+  it("answers the public path for an unknown slug too, with the same shell", async () => {
+    const missing = await getDocument("/b/never-existed-0000");
+
+    expect(missing.status).toBe(200);
+    expect(missing.contentType).toContain("text/html");
+  });
+
   it("serves a filed briefing as a document carrying its own meta", async () => {
     const { token } = await registerAndLogin("page-served@example.com");
     const briefing = await fileBriefing(token, "The heat, and who pays for it");

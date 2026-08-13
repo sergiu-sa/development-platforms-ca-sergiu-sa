@@ -59,21 +59,8 @@ if (config.webDevServer) {
 } else {
   // `npm start`: no Vite, so this process serves the build it was given.
   //
-  // /b/:slug is the one path a file cannot answer.
-  // In production vercel.json rewrites it to the route that generates the document;
-  // nothing does that here, so without this the pretty URL 404s locally while working on the deployed site;
-  // the kind of split that hides a fault until it is expensive.
-  // Registered before serveStatic, which would otherwise look for a file called b/<slug> and find none.
-  //
-  // Deliberately not in the `npm run dev` branch above:
-  // there Vite owns the frontend and answers this path itself, and serving the last *build* from this port instead is the stale-page trap that branch exists to avoid.
-  server.get("/b/:slug", (c) => {
-    const url = new URL(c.req.url);
-    url.pathname = `/api/briefings/${c.req.param("slug")}/page`;
-
-    return app.fetch(new Request(url, c.req.raw));
-  });
-
+  // /b/:slug needs nothing here: `app` owns that path directly and is mounted above, before serveStatic gets a chance to look for a file called b/<slug>.
+  // This used to re-dispatch the pretty path to the API one by hand, which worked locally and hid the fact that the deployed router never saw the rewritten path at all.
   // serveStatic is registered after the API so it cannot shadow it, and the explicit "/" handler stays last because serveStatic calls next() when it finds no file;
   //  that is what lets the index page resolve.
   server.use("/*", serveStatic({ root: "./dist/web" }));
