@@ -3,7 +3,7 @@
  *
  * Written as its own module rather than inside the page, because phase 11's curator shelf shows the same card for one person's briefings.
  * The only thing that differs there is which briefings it is handed.
-*
+ *
  * The card is a link, not a button with a click handler:
  * a briefing has a real address that is worth copying, opening in a new tab and sharing, and that is the whole point of the page it leads to.
  */

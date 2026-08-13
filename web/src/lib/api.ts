@@ -155,7 +155,7 @@ export async function getDeskEdition(from: string, to: string) {
  * One briefing by its public address.
  *
  * Returns the whole `ApiResult` rather than just the body, because the reading view has to tell "there is no such briefing" from "we could not ask":
- * 
+ *
  * the first is a designed page and the second is an error with a retry.
  * A 404 here is also the answer a stranger gets for somebody else's draft, so the page must never treat it as a failure to report.
  */

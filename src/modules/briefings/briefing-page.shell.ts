@@ -7,7 +7,7 @@
  *  only its head is built here, from the briefing the route just read.
  *
  * The document is composed rather than read off disk.
- * That was measured, not assumed: 
+ * That was measured, not assumed:
  * `includeFiles` cannot carry `dist/web` into the function, checked with a real `vercel build` against both `{src/**,dist/web/**}` and `dist/web/**` alone, and the bundle contained no HTML either way.
  * So the two assets this references have names the build pins rather than content hashes.
  *

@@ -136,7 +136,7 @@ function entryMarkup(
 /**
  * The whole briefing, standing beside the story.
  *
- * The current entry is marked three ways; a tint, a blue number and `aria-current`; 
+ * The current entry is marked three ways; a tint, a blue number and `aria-current`;
  * because colour is never the only signal and a screen reader needs to be told which one is on screen.
  */
 export function indexMarkup(briefing: Briefing, current: number): string {
