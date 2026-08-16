@@ -310,6 +310,101 @@ describe("a curator's shelf", () => {
   });
 });
 
+// The one read that returns a draft as a matter of course, and the reason the builder can be left and come back to.
+// Everything else here is about keeping drafts hidden;
+// this is about their author being able to find them.
+describe("the briefings on your own desk", () => {
+  it("carries your drafts alongside your filed work", async () => {
+    const { token } = await registerAndLogin("mine@example.com");
+    const filed = await fileBriefing(token, "Filed work");
+    const draft = await fileBriefing(token, "Unfinished work", { file: false });
+
+    const response = await get("/api/desk/briefings", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(2);
+    expect(
+      response.body.briefings.map((b: { slug: string }) => b.slug).sort()
+    ).toEqual([draft.slug, filed.slug].sort());
+  });
+
+  // The public listings sort by published_at, which a draft has not got.
+  // Sorting this one the same way would bunch every unfinished briefing at one end, which is the opposite of what a list of work in progress is for.
+  it("puts the most recently worked on first, not the most recently filed", async () => {
+    const { token } = await registerAndLogin("recent@example.com");
+    const older = await fileBriefing(token, "Started first");
+    await fileBriefing(token, "Started second");
+
+    const touched = await patch(
+      `/api/briefings/${older.id}`,
+      { title: "Started first, edited last" },
+      token
+    );
+    expect(touched.status).toBe(200);
+
+    const response = await get("/api/desk/briefings", token);
+
+    expect(response.body.briefings[0].slug).toBe(older.slug);
+  });
+
+  it("never carries another curator's work, filed or draft", async () => {
+    const one = await registerAndLogin("desk-one@example.com");
+    const two = await registerAndLogin("desk-two@example.com");
+    await fileBriefing(one.token, "By one");
+    await fileBriefing(one.token, "By one, unfinished", { file: false });
+    const mine = await fileBriefing(two.token, "By two", { file: false });
+
+    const response = await get("/api/desk/briefings", two.token);
+
+    expect(response.body.total).toBe(1);
+    expect(response.body.briefings[0].slug).toBe(mine.slug);
+  });
+
+  it("refuses a request carrying no token", async () => {
+    const { token } = await registerAndLogin("guarded@example.com");
+    await fileBriefing(token, "Private work", { file: false });
+
+    const response = await get("/api/desk/briefings");
+
+    expect(response.status).toBe(401);
+    expect(response.body.briefings).toBeUndefined();
+  });
+
+  // The reason this endpoint is not GET /api/briefings/mine.
+  // The public router is mounted first and its "/:slug" matches any single segment, so that address is read as a request for a briefing whose slug is "mine" and answered 404.
+  // It fails closed, and this pins it so nobody moves the route there later and finds out the hard way.
+  it("is not reachable at /api/briefings/mine, which is a slug lookup", async () => {
+    const { token } = await registerAndLogin("shadowed@example.com");
+    await fileBriefing(token, "Private work", { file: false });
+
+    const response = await get("/api/briefings/mine", token);
+
+    expect(response.status).toBe(404);
+    expect(response.body.briefings).toBeUndefined();
+  });
+
+  it("reports the true total on a page past the end", async () => {
+    const { token } = await registerAndLogin("paged@example.com");
+    await fileBriefing(token, "Only one", { file: false });
+
+    const response = await get("/api/desk/briefings?page=2", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body.briefings).toEqual([]);
+    expect(response.body.total).toBe(1);
+  });
+
+  it("answers an empty list rather than an error for a curator who has written nothing", async () => {
+    const { token } = await registerAndLogin("blank@example.com");
+
+    const response = await get("/api/desk/briefings", token);
+
+    expect(response.status).toBe(200);
+    expect(response.body.briefings).toEqual([]);
+    expect(response.body.total).toBe(0);
+  });
+});
+
 // The oldest standing rule in this codebase, and these are the endpoints it was written for:
 // anyone at all can call them, so an email on one of them publishes the userbase.
 describe("public reads never carry an email", () => {
