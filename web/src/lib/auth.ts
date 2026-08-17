@@ -14,6 +14,16 @@ export function isLoggedIn() {
   return getToken() !== null;
 }
 
+/**
+ * The signed-in curator's public name, or null.
+ *
+ * Read from the token's payload, which is decoded but **not verified** here - the browser has no secret to verify it with. So this may only ever decide what a page shows its own user, never what it is allowed to do.
+ * Every real check happens on the server against the same token, verified.
+ */
+export function currentUsername(): string | null {
+  return getUser()?.username ?? null;
+}
+
 function getUser() {
   const token = getToken();
   if (!token) return null;
@@ -31,18 +41,12 @@ function logout() {
   removeToken();
 
   // Everything this tab remembers about the reader goes with the token.
-  // sessionStorage survives a same-tab navigation, so without this the deck
-  // would restore the previous reader's saved and skipped stories to whoever
-  // uses the browser next.
+  // sessionStorage survives a same-tab navigation, so without this the deck would restore the previous reader's saved and skipped stories to whoever uses the browser next.
   //
-  // Cleared wholesale rather than by key, for two reasons: `lib` must not
-  // import from `wire`, and anything a later phase decides to keep here is
-  // covered without anyone having to remember to add it.
+  // Cleared wholesale rather than by key, for two reasons: `lib` must not import from `wire`, and anything a later phase decides to keep here is covered without anyone having to remember to add it.
   //
-  // Deliberately NOT done on login. Phase 6 migrates an anonymous session into
-  // the account on first sign-in, which is a designed feature rather than a
-  // leak - and clearing at logout is what stops that feature adopting somebody
-  // else's session.
+  // Deliberately NOT done on login.
+  // Phase 6 migrates an anonymous session into the account on first sign-in, which is a designed feature rather than a leak - and clearing at logout is what stops that feature adopting somebody else's session.
   sessionStorage.clear();
 
   window.location.href = "/index.html";

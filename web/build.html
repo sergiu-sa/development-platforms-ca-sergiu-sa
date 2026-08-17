@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lede - Build a briefing</title>
+  </head>
+  <body>
+    <!--
+      A plain .html address with a query parameter, not a pretty /b/:slug/edit.
+      Pretty paths exist for things people share, and nobody shares a builder: the reading view earns its rewrite, this does not.
+      It would also cost four copies of one mapping; vercel.json, the Vite dev middleware, a route on the app and a client regex,  which is a loose end this repo already has open.
+      /desk.html?date= set the precedent in phase 7 for the same reason.
+    -->
+    <div class="deskbar">
+      <a href="/index.html" class="word">Lede<b>.</b></a>
+      <a href="/desk.html" class="btn m deskbar-back">
+        <span aria-hidden="true">&larr;</span>
+        <span>Back to your desk</span>
+      </a>
+      <nav class="top-nav m" aria-label="Account">
+        <a href="/login.html" id="nav-login" class="nav-link">Log in</a>
+        <span id="nav-user" class="quiet top-nav-user" hidden></span>
+        <button id="nav-logout" class="nav-link" type="button" hidden>
+          Log out
+        </button>
+      </nav>
+    </div>
+
+    <main class="build" id="root">
+      <p class="m quiet">Loading...</p>
+    </main>
+
+    <!--
+      Outside #root because the page redraws #root from state and this must not  be swept away mid-save:
+      the status inside it is a live region, and a live  region has to be in the document before its content changes or nothing is announced.
+      The desk learned that one.
+    -->
+    <div class="build-bar" id="build-bar" hidden></div>
+
+    <script type="module" src="/src/pages/build.ts"></script>
+  </body>
+</html>
