@@ -173,6 +173,107 @@ export async function getBriefings(): Promise<ApiResult> {
   return request("/briefings");
 }
 
+/**
+ * Whether a status is the server's final answer, so a queued write must be dropped rather than retried.
+ *
+ * The case it was written for is a story that has aged off the wire: the desk answers 404 for ever, and a queue that retried it would never reach the decisions behind it.
+ * The builder has the same hazard one table along - a note for an item somebody removed in another tab.
+ *
+ * **401 is deliberately not final**, because it is a statement about the credential rather than about the request.
+ * Treating it as final would mark a write sent when nothing was written.
+ *
+ * Lives here rather than in either caller because two copies of "which failures are permanent" is the drift this codebase has paid for elsewhere, and this one loses somebody's writing when the copies disagree.
+ */
+export function isFinalRefusal(status: number): boolean {
+  return status >= 400 && status < 500 && status !== 401;
+}
+
+/**
+ * The briefings on the signed-in curator's own desk, drafts included.
+ *
+ * The whole `ApiResult`, because the builder opens with this call and needs the status:
+ * a 401 here is what redirects an expired session to sign-in, and it has to happen before any draft can be reported missing.
+ */
+export async function getMyBriefings(): Promise<ApiResult> {
+  return request("/desk/briefings");
+}
+
+export async function createBriefing(
+  title: string,
+  intro?: string
+): Promise<ApiResult> {
+  return request("/briefings", {
+    method: "POST",
+    body: JSON.stringify(intro === undefined ? { title } : { title, intro }),
+  });
+}
+
+/** Retitles, rewrites the intro, files, or withdraws. At least one of the three. */
+export async function updateBriefing(
+  id: number,
+  patch: { title?: string; intro?: string; status?: "draft" | "published" }
+): Promise<ApiResult> {
+  return request(`/briefings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function deleteBriefing(id: number): Promise<ApiResult> {
+  return request(`/briefings/${id}`, { method: "DELETE" });
+}
+
+/** Adds a story to the end. Position is the server's to assign, never the client's. */
+export async function addBriefingItem(
+  id: number,
+  storyId: number,
+  note?: string
+): Promise<ApiResult> {
+  return request(`/briefings/${id}/items`, {
+    method: "POST",
+    body: JSON.stringify(note === undefined ? { storyId } : { storyId, note }),
+  });
+}
+
+/**
+ * Rewrites one note.
+ *
+ * `note` is always sent, even empty, because the server requires the key:
+ * absent and empty would otherwise be the same request with two meanings, and picking either silently would eventually erase somebody's writing.
+ */
+export async function updateBriefingNote(
+  id: number,
+  itemId: number,
+  note: string
+): Promise<ApiResult> {
+  return request(`/briefings/${id}/items/${itemId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ note }),
+  });
+}
+
+export async function removeBriefingItem(
+  id: number,
+  itemId: number
+): Promise<ApiResult> {
+  return request(`/briefings/${id}/items/${itemId}`, { method: "DELETE" });
+}
+
+/**
+ * States the whole ordering.
+ *
+ * The server refuses anything that is not exactly this briefing's current items, each named once, so this is sent from the order on screen rather than from a remembered one.
+ */
+export async function reorderBriefingItems(
+  id: number,
+  itemIds: number[]
+): Promise<ApiResult> {
+  return request(`/briefings/${id}/items`, {
+    method: "PUT",
+    body: JSON.stringify({ itemIds }),
+  });
+}
+
 export async function putDeskDecision(
   storyId: number,
   state: "saved" | "skipped"

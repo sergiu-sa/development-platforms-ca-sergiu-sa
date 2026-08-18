@@ -27,6 +27,7 @@ import {
   putDeskDecision,
   deleteDeskDecision,
   mergeDesk,
+  isFinalRefusal,
 } from "../lib/api";
 import { readSession, type DeckStore } from "./store";
 import type { Decision } from "./types";
@@ -135,29 +136,24 @@ export function createDeskSync(transport: DeskTransport): DeskSync {
  * A 4xx is the server's final answer and must not be retried; anything else
  * might be a blip worth another go on the reader's next decision.
  *
- * The case that matters is a story that has aged off the wire: the desk
- * answers 404 for ever, and a queue that retried it would never reach the
- * decisions behind it.
+ * `isFinalRefusal` lives in `lib/api.ts` because the builder needs the same
+ * rule and two copies of "which failures are permanent" is how they drift.
+ * Its comment carries the reasoning, including why 401 is not on the list.
  *
- * 401 is excluded, because it is a statement about the credential rather than
- * about the request. Treating it as final would mark the intent sent when
- * nothing was written. It still will not survive the redirect that a 401
- * triggers - persisting the queue is what would fix that, and it is a loose
- * end - but the queue must not claim to have done something it did not.
+ * One thing that reasoning does not cover and this does: an intent lost to a
+ * 401 does not survive the redirect that a 401 triggers, because the queue is
+ * in memory. Persisting it is the real fix and it is a loose end. What matters
+ * here is only that the queue never claims to have done something it did not.
  */
-function isRefusal(status: number): boolean {
-  return status >= 400 && status < 500 && status !== 401;
-}
-
 export function createDeskTransport(): DeskTransport {
   return {
     async set(storyId, state) {
       const { status, body } = await putDeskDecision(storyId, state);
-      return body?.success === true || isRefusal(status);
+      return body?.success === true || isFinalRefusal(status);
     },
     async clear(storyId) {
       const { status, body } = await deleteDeskDecision(storyId);
-      return body?.success === true || isRefusal(status);
+      return body?.success === true || isFinalRefusal(status);
     },
   };
 }

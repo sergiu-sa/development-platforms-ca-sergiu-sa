@@ -396,6 +396,58 @@ async function countPublished(authorId: number | null): Promise<number> {
   return Number(rows[0].total);
 }
 
+/**
+ * Everything one curator has written, drafts included, most recently worked on first.
+ *
+ * This is the only read in the module that returns a draft as a matter of course, and it is the one the builder opens with:
+ * without it a draft is reachable only by remembering its address, so leaving the page loses the work.
+ *
+ * **Sorted by `updated_at`, not `published_at`.** A draft has no `published_at` at all, so the public listings' ordering would bunch every unfinished briefing together at one end.
+ * This is a list of work rather than a shelf, and what you touched last is what you came back for.
+ *
+ * **Its WHERE is `author_id = $1` and nothing else**, deliberately its own query rather than `PUBLISHED_FILTER` with the status half made optional.
+ * That constant is what makes "the public sees filed rows only" checkable by reading one line, and it stops being that the moment it takes a flag.
+ * The duplicated paging below is the price, and it is the cheaper of the two.
+ */
+export async function listOwn(
+  authorId: number,
+  page: number
+): Promise<BriefingPage> {
+  const offset = (page - 1) * BRIEFINGS_PAGE_SIZE;
+
+  const { rows } = await pool.query<BriefingRow & { total_count: string }>(
+    `SELECT ${BRIEFING_FIELDS},
+            count(*) OVER () AS total_count
+       ${BRIEFING_SOURCE}
+      WHERE briefing.author_id = $1
+      ORDER BY briefing.updated_at DESC, briefing.id DESC
+      LIMIT $2 OFFSET $3`,
+    [authorId, BRIEFINGS_PAGE_SIZE, offset]
+  );
+
+  if (rows[0]) {
+    return {
+      briefings: rows.map(toSummary),
+      total: Number(rows[0].total_count),
+    };
+  }
+
+  // Same reasoning as the public listing: zero rows on page 1 already proves the total is zero, and only a page past the end has to go and ask.
+  return {
+    briefings: [],
+    total: page === 1 ? 0 : await countOwn(authorId),
+  };
+}
+
+async function countOwn(authorId: number): Promise<number> {
+  const { rows } = await pool.query<{ total: string }>(
+    "SELECT count(*) AS total FROM briefings WHERE author_id = $1",
+    [authorId]
+  );
+
+  return Number(rows[0].total);
+}
+
 interface LockedBriefing {
   id: number;
   status: BriefingStatus;
@@ -436,25 +488,20 @@ async function lockOwnBriefing(
 }
 
 /**
- * How many stories the briefing holds, read **after** the lock rather than
- * with it.
+ * How many stories the briefing holds, read **after** the lock rather than with it.
  *
- * This separation is the whole point, and it is not tidiness. The count used to
- * be a sub-select inside the locking statement, which reads correctly right up
- * until it matters: under READ COMMITTED a statement that blocks on a row lock
- * re-checks the qual against the newest version of *that row*, while everything
- * else it touches stays on the snapshot taken when the statement began. So
- * `status` came back fresh and the count came back stale.
+ * This separation is the whole point, and it is not tidiness.
+ * The count used to be a sub-select inside the locking statement, which reads correctly right up until it matters:
+ * under READ COMMITTED a statement that blocks on a row lock re-checks the qual against the newest version of *that row*, while everything else it touches stays on the snapshot taken when the statement began.
+ * So `status` came back fresh and the count came back stale.
  *
- * Measured, not deduced. Two connections, a published briefing holding two
- * stories: A takes the lock, deletes one, commits; B, blocked on the lock
- * throughout, then reports **two**. Issued as its own statement after the lock
- * it reports one, because in READ COMMITTED each new statement takes a new
- * snapshot.
+ * Two connections, a published briefing holding twostories:
+ * A takes the lock, deletes one, commits;
+ * B, blocked on the lock throughout, then reports **two**.
+ * Issued as its own statement after the lock it reports one, because in READ COMMITTED each new statement takes a new  snapshot.
  *
- * That difference is the difference between the guards below being enforced and
- * merely appearing to be. Two concurrent deletes on a filed briefing holding
- * two stories would both have seen two, both passed, and left it empty.
+ * That difference is the difference between the guards below being enforced and merely appearing to be.
+ * Two concurrent deletes on a filed briefing holding two stories would both have seen two, both passed, and left it empty.
  */
 async function countItems(
   client: pg.PoolClient,
@@ -495,8 +542,7 @@ export async function updateBriefing(
 
     // An empty briefing has nothing to say, so it cannot be published.
     // Checked under the lock taken above, which is what stops the last item being removed between this read and the write below.
-    // Counted only when it is about to matter, so a title-only patch does not
-    // pay for a question it never asks.
+    // Counted only when it is about to matter, so a title-only patch does not pay for a question it never asks.
     if (
       patch.status === "published" &&
       (await countItems(client, briefingId)) === 0
@@ -736,7 +782,9 @@ export async function removeItem(
  * Measured both ways - the same UPDATE against a non-deferrable constraint raises 23505 on the second row.
  *
  * So SET CONSTRAINTS below is not what makes this work today, and removing it changes nothing while the rewrite is a single statement.
- * It stays because the moment it is two - a swap written as two UPDATEs is the obvious way somebody edits this - the deferral becomes load-bearing again, and the failure would be a 23505 from a statement that looks obviously correct.
+ * It stays because the moment it is two;
+ * a swap written as two UPDATEs is the obvious way somebody edits this;
+ * the deferral becomes load-bearing again, and the failure would be a 23505 from a statement that looks obviously correct.
  * tests/schema.test.ts pins the DEFERRABLE keyword itself for the same reason.
  */
 export async function reorderItems(

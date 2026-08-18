@@ -23,6 +23,7 @@ import {
   briefingPublicPageRoutes,
 } from "./modules/briefings/briefing-page.route.js";
 import { curatorRoutes } from "./modules/briefings/curators.route.js";
+import { deskBriefingRoutes } from "./modules/briefings/desk-briefings.route.js";
 
 // strict: false so a trailing slash means the same route.
 //
@@ -123,6 +124,21 @@ api.get("/health", async (c) => {
 api.route("/auth", authRoutes);
 api.route("/wire", wireRoutes);
 api.route("/desk", deskRoutes);
+// "The briefings on your desk" - your own work, drafts included.
+// Its header explains why it is here and not under /briefings.
+//
+// **Mounted second, deliberately.**
+// Both routers put a blanket authMiddleware over this whole prefix, so whichever is mounted first verifies the token for every desk request, not only its own.
+// Measured against the real router both ways:
+//
+//   this one first:  GET /desk/briefings -> 1 verify, PUT /desk/:storyId -> 2
+//   this one second: GET /desk/briefings -> 2 verifies, PUT /desk/:storyId -> 1
+//
+// So the order is a choice about which path pays, and it must be this one.
+// PUT /desk/:storyId fires on every Skip and Save the deck makes;
+// GET /desk/briefings fires once when somebody opens the builder.
+// An earlier version of this had it the other way round and claimed the opposite in a comment.
+api.route("/desk", deskBriefingRoutes);
 // Briefings serve public reads and private writes on the same prefix, so unlike /api/desk they cannot sit behind one blanket authMiddleware.
 // Two routers make the split instead, and the order is load-bearing:
 // Hono runs matched handlers in registration order, so the public reads must be mounted first or the private router's blanket middleware would 401 them.

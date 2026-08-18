@@ -230,12 +230,14 @@ button {
 }
 
 /* WCAG 1.4.3 exempts inactive controls from the contrast minimum, which is why this is the one opacity below the .72 floor. contrast.test.ts skips :disabled selectors explicitly rather than the floor being quietly lowered. */
-.btn:disabled {
+.btn:disabled,
+.build-tools button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.btn:disabled:hover {
+.btn:disabled:hover,
+.build-tools button:disabled:hover {
   background: none;
   color: inherit;
 }
@@ -1602,7 +1604,8 @@ Blue is the reader's hand everywhere in this product, and following a link to th
   padding-bottom: 1.25rem;
 }
 
-.briefing-kicker {
+.briefing-kicker,
+.build-kicker {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -1611,7 +1614,8 @@ Blue is the reader's hand everywhere in this product, and following a link to th
 /* A filled mark carrying no glyph, so it may be the hot blue.
 Blue is the reader's hand throughout this product, and a briefing is something somebody chose to file.
 Decorative rather than informative - the word "Briefing" beside it carries the meaning - so it is hidden from assistive technology instead of being given a label that would say the same thing twice. */
-.briefing-mark {
+.briefing-mark,
+.build-mark {
   width: 7px;
   height: 7px;
   flex: none;
@@ -1679,7 +1683,9 @@ Shared with the card's intro, which is the same sentence doing the same job - th
   opacity: 0.72;
 }
 
-.briefing-thumb {
+.briefing-thumb,
+.build-thumb,
+.build-picker-thumb {
   width: 56px;
   aspect-ratio: 1;
   object-fit: cover;
@@ -1921,7 +1927,10 @@ Shared with the card's intro, which is the same sentence doing the same job - th
   /* Goes with it, and before it: a way out of a page outranks a way further in,
   so if only one of the two could stay it would not be this one. Briefings are
   still reachable from the wire's own spine, which this width keeps. */
-  .deskbar-briefings {
+  .deskbar-briefings,
+  /* Goes at the same width and for the same reason: these are ways further in,
+     and a phone-width bar keeps the ways out. */
+  .deskbar-build {
     display: none;
   }
 
@@ -2032,5 +2041,470 @@ Shared with the card's intro, which is the same sentence doing the same job - th
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- the builder ----
+   The galley: the briefing as one document, top to bottom in its own order,
+   with the writing turned on. The spread was built beside it and rejected -
+   below 62rem it collapses to story-then-index, so changing story means
+   scrolling past a photograph and back, and it shows one note at a time when
+   order is the whole point.
+
+   Blue throughout, and that is the two-accent rule rather than a departure
+   from it: everything on this page is the reader's hand. Red appears once, on
+   the hover of the only control here that cannot be undone. */
+
+.build {
+  max-width: 54rem;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2rem) 0;
+}
+
+/* Clears the fixed bar, which is out of flow and would otherwise sit on top of
+   the last thing on the page. */
+.build,
+.build-starter {
+  padding-bottom: 6rem;
+}
+
+/* The reading view's kicker and mark, reused. Only the spacing below differs,
+   because this one heads a page rather than a panel. */
+.build-kicker {
+  margin: 0 0 1.25rem;
+}
+
+/* Writing surfaces are the paper itself rather than boxes drawn on it. The
+   affordance is the dashed baseline while empty and the recessed tint on
+   focus, which is also the only thing that moves. */
+.build-field {
+  display: block;
+  width: 100%;
+  margin-left: -0.5rem;
+  padding: 0.35rem 0.5rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font-family: var(--font-grot);
+  resize: none;
+  overflow: hidden;
+}
+
+/* The ring comes from the global :focus-visible. Only the recessed tint is this
+   field's own, and it uses :focus so it also shows for a pointer. */
+.build-field:focus {
+  background: var(--color-paper-2);
+}
+
+.build-field:placeholder-shown {
+  border-bottom: 1px dashed var(--color-rule);
+}
+
+/* The placeholder is an instruction rather than secondary text, so it sits at
+   the same strength as the quiet floor rather than below it. */
+.build-field::placeholder {
+  color: var(--color-ink);
+  opacity: 0.72;
+}
+
+/* A textarea rather than an input, and not cosmetic: a title runs to 200
+   characters and a single line clips it with no way to reach the end. */
+.build-title-field {
+  font-variation-settings:
+    "opsz" 96,
+    "wght" 400,
+    "wdth" 100;
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  line-height: 1.06;
+  letter-spacing: -0.028em;
+}
+
+.build-intro-field {
+  margin-top: 0.75rem;
+  font-variation-settings:
+    "opsz" 16,
+    "wght" 400,
+    "wdth" 100;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.build-facts {
+  margin: 1.1rem 0 0;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+/* Blue because it is a thing for the curator to go and do. */
+.build-unwritten {
+  color: var(--color-blue);
+}
+
+.build-band {
+  padding: 1.75rem 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.build-band-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.build-pos {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0;
+}
+
+/* Position 1 is the lede because it is first. This is a label on an order, not
+   a state that can be set, and there is no column behind it to disagree with. */
+.build-lede {
+  color: var(--color-blue);
+}
+
+.build-tools {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.build-tools button {
+  padding: 0.45rem 0.6rem;
+}
+
+.build-tools button:hover:not(:disabled) {
+  background: var(--color-paper-2);
+}
+
+/* The note is the only original writing on the page, so it is set larger and
+   lighter than the Guardian headline it is about - the same move the reading
+   view makes, at working size rather than at reading size. */
+.build-note-field {
+  font-variation-settings:
+    "opsz" 96,
+    "wght" 300,
+    "wdth" 100;
+  font-size: clamp(1.25rem, 2.1vw, 1.7rem);
+  line-height: 1.28;
+  letter-spacing: -0.02em;
+}
+
+/* Kept in the layout rather than removed, so the story below does not jump a
+   line when the counter appears. */
+.build-count {
+  margin: 0.35rem 0 0;
+  visibility: hidden;
+}
+
+.build-count.near {
+  visibility: visible;
+}
+
+.build-story {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+  margin-top: 1.1rem;
+}
+
+/* Same crop as the reading view's index thumbnail, one size up. The
+   object-position is a measured value - a head sits in the top third - so it is
+   set in one place rather than copied per surface. */
+.build-thumb {
+  width: 88px;
+}
+
+.build-headline {
+  margin: 0 0 0.5rem;
+  font-variation-settings:
+    "wght" 600,
+    "wdth" 92,
+    "opsz" 18;
+  font-size: 17px;
+  line-height: 1.2;
+  text-wrap: pretty;
+}
+
+.build-add {
+  display: block;
+  width: 100%;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--color-rule);
+  text-align: left;
+}
+
+button.build-add:hover {
+  background: var(--color-paper-2);
+}
+
+.build-empty {
+  padding: 3rem 0;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.build-empty-heading {
+  margin: 0 0 0.75rem;
+  font-variation-settings:
+    "wght" 500,
+    "wdth" 95,
+    "opsz" 40;
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  line-height: 1.1;
+}
+
+.build-empty-body {
+  max-width: 42ch;
+  margin: 0 0 1.5rem;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.build-danger {
+  padding: 2rem 0 3rem;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* The only irreversible control on the page, so the only one that goes red -
+   the same rule that made the desk's Remove the one red hover. Taking a story
+   out of a briefing is reversible and is not tinted. */
+.build-danger button[data-delete]:hover {
+  color: var(--color-red-ink);
+}
+
+.build-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.5rem;
+  padding: 0.5rem clamp(1rem, 3vw, 2rem);
+  border-top: 1px solid var(--color-rule);
+  background: var(--color-paper-2);
+}
+
+.build-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.build-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+/* Redundant with the word beside it. Colour is never the only signal here. */
+.build-save::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  background: currentColor;
+}
+
+.build-save[data-state="saved"] {
+  color: var(--color-blue);
+}
+
+.build-save[data-state="saving"],
+.build-save[data-state="unsaved"] {
+  opacity: 0.72;
+}
+
+/* Stated rather than implied by a greyed-out button, and short enough not to
+   wrap the bar - the first draft of this sentence took three lines at 1440. */
+.build-blocked {
+  max-width: 34ch;
+  margin: 0;
+}
+
+.build-withdraw:hover {
+  text-decoration: underline;
+}
+
+/* Labels in the bar never break mid-phrase. It is fixed-height furniture, so a
+   label that does not fit is shortened rather than wrapped. */
+.build-bar .btn,
+.build-withdraw {
+  white-space: nowrap;
+}
+
+.build-withdraw-short {
+  display: none;
+}
+
+.build-error {
+  margin: 2rem 0;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.build-starter {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: clamp(2rem, 6vw, 5rem) clamp(1rem, 3vw, 2rem) 0;
+}
+
+.build-starter-note {
+  max-width: 46ch;
+  margin: 1rem 0 1.75rem;
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+.build-starter-error {
+  margin: 1rem 0 0;
+  color: var(--color-red-ink);
+}
+
+.build-shelf {
+  margin-top: 3.5rem;
+  border-top: 1px solid var(--color-rule);
+}
+
+.build-shelf-heading {
+  margin: 1.5rem 0 0.5rem;
+}
+
+.build-shelf-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.build-shelf-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--color-rule);
+  text-decoration: none;
+}
+
+.build-shelf-row:hover {
+  background: var(--color-paper-2);
+}
+
+.build-shelf-title {
+  font-variation-settings:
+    "wght" 500,
+    "wdth" 95,
+    "opsz" 24;
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.build-shelf-facts {
+  display: flex;
+  gap: 0.9rem;
+}
+
+.build-picker {
+  margin: 2rem 0 0;
+  border: 1px solid var(--color-rule);
+  background: var(--color-paper-2);
+}
+
+.build-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.build-picker-title {
+  margin: 0;
+}
+
+.build-picker-close:hover {
+  text-decoration: underline;
+}
+
+.build-picker-empty {
+  max-width: 46ch;
+  margin: 0;
+  padding: 1.5rem 1rem;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.build-picker-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 26rem;
+  overflow-y: auto;
+}
+
+.build-picker-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.build-picker-headline {
+  margin: 0 0 0.35rem;
+  font-variation-settings:
+    "wght" 500,
+    "wdth" 92,
+    "opsz" 18;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+@media (max-width: 40rem) {
+  .build-story {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .build-thumb {
+    width: 64px;
+  }
+
+  /* The bar is fixed-height furniture and must not wrap, so the label shortens
+     instead: the state word carries it on its own. */
+  .build-blocked {
+    display: none;
+  }
+
+  .build-picker-row {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .build-picker-add {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  /* The long spelling wraps to two lines here, so the short one is drawn and
+     the long one leaves the document entirely - which keeps the accessible
+     name in step with what is on screen rather than reading out both. */
+  .build-withdraw-long {
+    display: none;
+  }
+
+  .build-withdraw-short {
+    display: inline;
   }
 }
