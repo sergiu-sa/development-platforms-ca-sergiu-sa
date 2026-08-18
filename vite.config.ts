@@ -26,9 +26,34 @@ const briefingDevRoute = (): Plugin => ({
   },
 });
 
+/**
+ * The distinct stylesheets this build has named.
+ *
+ * `assetFileNames` below names **any** stylesheet `assets/lede.css`, because the server writes that filename into the document it generates for /b/:slug and so cannot be told a hash.
+ * One bundle exists today, so nothing collides.
+ * The moment Rollup splits the CSS - a second entry importing something the others do not, most likely - two chunks claim one filename and one of them silently wins.
+ * The loser is unstyled, and the page that loses is whichever one the document names.
+ *
+ * **Distinct names, not calls.** Measured while writing this: the naming hook runs *twice for the same asset* on the current build, both times as `auth.css`, and one file lands in `dist/web`.
+ * A guard counting invocations therefore fails on a perfectly good build, and a guard that cries wolf on every build is one somebody deletes.
+ * The real signal is the source name, because Vite names the chunk after whichever entry it hung it off - which is exactly how this filename moved from `app.css` to `api.css` in phase 9.
+ *
+ * It belongs at the point of naming rather than in a test: the suite never runs a build, so a check living there would be describing an output it has not seen.
+ */
+const stylesheets = new Set<string>();
+
+/** Clears the set, so `vite build --watch` does not accumulate names across rebuilds. */
+const countStylesheets = (): Plugin => ({
+  name: "count-stylesheets",
+  apply: "build",
+  buildStart() {
+    stylesheets.clear();
+  },
+});
+
 export default defineConfig({
   root: "web",
-  plugins: [tailwindcss(), briefingDevRoute()],
+  plugins: [tailwindcss(), briefingDevRoute(), countStylesheets()],
   build: {
     outDir: "../dist/web",
     emptyOutDir: true,
@@ -40,6 +65,7 @@ export default defineConfig({
         register: entry("web/register.html"),
         briefing: entry("web/b.html"),
         briefings: entry("web/briefings.html"),
+        build: entry("web/build.html"),
       },
       output: {
         // Two files carry no content hash, because the server composes the briefing document and has to be able to name them:
@@ -61,11 +87,27 @@ export default defineConfig({
         // Every page shares one CSS bundle, and Vite names that chunk after whichever entry it happened to hang it off;
         // it came out as `app.css` and then as `api.css` when an unrelated entry changed.
         // The server has to write this filename into the document it generates, so it cannot be something that moves.
-        // A second CSS bundle would collide with this name, which Task 9 checks for by counting the files in the build.
-        assetFileNames: (asset) =>
-          (asset.names?.[0] ?? "").endsWith(".css")
-            ? "assets/lede.css"
-            : "assets/[name]-[hash][extname]",
+        // A second CSS bundle would collide with this name, which is what the count above exists to refuse.
+        assetFileNames: (asset) => {
+          const name = asset.names?.[0] ?? "";
+
+          if (!name.endsWith(".css")) {
+            return "assets/[name]-[hash][extname]";
+          }
+
+          stylesheets.add(name);
+
+          if (stylesheets.size > 1) {
+            throw new Error(
+              `This build split its CSS into ${stylesheets.size} chunks (${[...stylesheets].join(", ")}), ` +
+                'and every one of them would be named "assets/lede.css".\n' +
+                "One would overwrite the other, and the page whose generated document names that file would ship unstyled.\n" +
+                "Either keep the CSS in one chunk, or give the briefing document a way to learn the real filename."
+            );
+          }
+
+          return "assets/lede.css";
+        },
       },
     },
   },
