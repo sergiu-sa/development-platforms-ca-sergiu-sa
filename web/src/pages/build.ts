@@ -7,6 +7,7 @@ import {
   getBriefing,
   getMyBriefings,
   removeBriefingItem,
+  safeNext,
   updateBriefing,
 } from "../lib/api";
 import {
@@ -91,6 +92,21 @@ function growAll(root: ParentNode): void {
 
 async function mount(): Promise<void> {
   updateNavigation();
+
+  // Client-side only, and the API is the real boundary: every route this page touches refuses an anonymous caller whatever happens here.
+  // This is what gives a signed-out visitor the sign-in form instead of a page that never finishes loading.
+  //
+  // It has to be here rather than in each branch below, because the reason it is needed is not about briefings at all:
+  // `lib/api.ts` turns a 401 into a redirect only when the request carried a token, so with no token at all nothing downstream sends anybody anywhere.
+  // Both branches then read their refusal as "already handled" and stop, one on "Loading..." and one on "That briefing does not exist", neither of which tells a reader the one thing that is actually wrong, which is that they are not signed in.
+  //
+  // The whole path is carried across, not just "/build.html", so a half-written draft is still the page they land on after signing in.
+  // `desk.ts` does this for the same reason and `safeNext` is what stops the value being turned into somewhere off-site.
+  if (!isLoggedIn()) {
+    const here = safeNext(window.location.pathname + window.location.search);
+    window.location.href = `/login.html?next=${encodeURIComponent(here)}`;
+    return;
+  }
 
   const root = document.getElementById("root");
   const bar = document.getElementById("build-bar");
