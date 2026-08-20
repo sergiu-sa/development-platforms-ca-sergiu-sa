@@ -23,7 +23,7 @@
  */
 
 import { Hono, type Context } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { originOf } from "../../html/origin.js";
 import { slugParamSchema } from "./briefings.schema.js";
 import { getBriefingBySlug } from "./briefings.service.js";
 import { buildBriefingPage } from "./briefing-page.shell.js";
@@ -35,32 +35,20 @@ const briefingPageRoutes = new Hono();
 const briefingPublicPageRoutes = new Hono();
 
 /**
- * Where this deployment thinks it is.
+ * A document answers for every input, including one that could not name a briefing.
  *
- * Taken from the forwarded headers rather than hard-coded, so a preview
- * describes itself as the preview instead of claiming to be production and
- * sending every shared preview link to the live site. Falls back to the
- * request URL, which is what local development and the test suite see.
+ * `zValidator` used to guard these two routes, which meant a mistyped address got a JSON 400 where a person was expecting a page.
+ * The shape is still checked - a slug that cannot match is not sent to Postgres - but a failure now falls through to the shell that describes nothing, which is the same answer somebody else's draft gets.
+ * So every reachable address under `/b/` renders, and none of them says which kind of nothing it found.
  */
-function originOf(c: Context): string {
-  const host = c.req.header("x-forwarded-host") ?? c.req.header("host");
-  if (!host) return new URL(c.req.url).origin;
+function readSlug(raw: string | undefined): string | null {
+  const parsed = slugParamSchema.safeParse({ slug: raw });
 
-  // The scheme comes from the request rather than defaulting to https, so a
-  // local server does not advertise itself as https://localhost and produce a
-  // canonical URL nothing can fetch. Vercel always sets the forwarded header,
-  // so production and previews take that branch.
-  const proto =
-    c.req.header("x-forwarded-proto") ??
-    new URL(c.req.url).protocol.replace(":", "");
-
-  return `${proto}://${host}`;
+  return parsed.success ? parsed.data.slug : null;
 }
 
-const validateSlug = zValidator("param", slugParamSchema);
-
 async function servePage(c: Context) {
-  const { slug } = c.req.valid("param" as never) as { slug: string };
+  const slug = readSlug(c.req.param("slug"));
 
   // Read as an anonymous viewer, always.
   //
@@ -74,7 +62,7 @@ async function servePage(c: Context) {
   let briefing = null;
 
   try {
-    briefing = await getBriefingBySlug(slug, null);
+    if (slug) briefing = await getBriefingBySlug(slug, null);
   } catch (error) {
     // A failed read must not take the page down with it: the shell still
     // renders and the client asks again, which is a worse page rather than no
@@ -82,10 +70,12 @@ async function servePage(c: Context) {
     console.error("Briefings error while loading a briefing page:", error);
   }
 
-  return c.html(buildBriefingPage({ briefing, origin: originOf(c), slug }));
+  return c.html(
+    buildBriefingPage({ briefing, origin: originOf(c), slug: slug ?? "" })
+  );
 }
 
-briefingPageRoutes.get("/:slug/page", validateSlug, servePage);
-briefingPublicPageRoutes.get("/:slug", validateSlug, servePage);
+briefingPageRoutes.get("/:slug/page", servePage);
+briefingPublicPageRoutes.get("/:slug", servePage);
 
 export { briefingPageRoutes, briefingPublicPageRoutes };
