@@ -9,6 +9,7 @@
 
   "rewrites": [
     { "source": "/b/:slug", "destination": "/api/briefings/:slug/page" },
+    { "source": "/u/:username", "destination": "/api/curators/:username/page" },
     { "source": "/api/:path*", "destination": "/api" }
   ],
 
@@ -35,7 +36,7 @@
       ]
     },
     {
-      "source": "/assets/(briefing.js|lede.css)",
+      "source": "/assets/(briefing.js|profile.js|lede.css)",
       "headers": [
         {
           "key": "Cache-Control",

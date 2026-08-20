@@ -23,6 +23,10 @@ import {
   briefingPublicPageRoutes,
 } from "./modules/briefings/briefing-page.route.js";
 import { curatorRoutes } from "./modules/briefings/curators.route.js";
+import {
+  curatorPageRoutes,
+  curatorPublicPageRoutes,
+} from "./modules/briefings/curator-page.route.js";
 import { deskBriefingRoutes } from "./modules/briefings/desk-briefings.route.js";
 
 // strict: false so a trailing slash means the same route.
@@ -149,6 +153,10 @@ api.route("/desk", deskBriefingRoutes);
 api.route("/briefings", briefingPageRoutes);
 api.route("/briefings", publicBriefingRoutes);
 api.route("/briefings", briefingRoutes);
+// The document behind /u/:username, which vercel.json rewrites to this path.
+// Its path is two segments and the JSON listing below matches one, so neither can shadow the other and the order is free.
+// Written this way round to match the briefings prefix above, where the order is not free.
+api.route("/curators", curatorPageRoutes);
 api.route("/curators", curatorRoutes);
 
 // CORS - only for the API routes, and only for origins we explicitly name.
@@ -175,6 +183,10 @@ app.route("/api", api);
 // Mounted only here, the page 404'd on a real deployment while every local check passed.
 // briefing-page.route.ts has the full account.
 app.route("/b", briefingPublicPageRoutes);
+
+// The second such path, and it needs a route here for exactly the same reason.
+// A vercel.json rewrite gets the request to the function and no further: hono/vercel rebuilds it from the ORIGINAL url, so the router sees /u/:username.
+app.route("/u", curatorPublicPageRoutes);
 
 // API only, deliberately.
 // The frontend is served by src/index.ts in local development and by Vercel's CDN in production, so nothing in here may depend on a Node server being present;
