@@ -154,7 +154,9 @@ export function indexMarkup(briefing: Briefing, current: number): string {
     `<h1 class="briefing-title">${escapeHtml(briefing.title)}</h1>` +
     intro +
     `<p class="briefing-facts m">` +
-    `<span>By ${escapeHtml(briefing.author.username)}</span>` +
+    // The one place a reader can get to a curator's shelf, and the reason it is here rather than on the shelf's own cards:
+    //  the whole card there is an anchor, so a byline link inside it would be a nested one.
+    `<span>By <a class="briefing-byline" href="/u/${encodeURIComponent(briefing.author.username)}">${escapeHtml(briefing.author.username)}</a></span>` +
     `<span class="quiet">${stories} ${stories === 1 ? "story" : "stories"}</span>` +
     `<span class="quiet">${minutes} min read</span>` +
     `</p></div>` +

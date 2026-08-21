@@ -61,11 +61,10 @@ export function updateNavigation() {
   const logoutBtn = document.getElementById("nav-logout");
   const userLabel = document.getElementById("nav-user");
 
-  // Visibility is the `hidden` attribute rather than an inline style. The
-  // markup has to declare a starting state, and a style="display:none" in HTML
-  // is parsed as an inline style - which style-src 'self' blocks, so every nav
-  // element would render at once before this ran. `hidden` is honoured by the
-  // UA stylesheet and needs no CSP allowance.
+  // Visibility is the `hidden` attribute rather than an inline style.
+  // The markup has to declare a starting state, and a style="display:none" in HTML is parsed as an inline style;
+  //  which style-src 'self' blocks, so every nav element would render at once before this ran.
+  // `hidden` is honoured by the UA stylesheet and needs no CSP allowance.
   if (loginLink) loginLink.hidden = loggedIn;
   if (registerLink) registerLink.hidden = loggedIn;
   if (logoutBtn) {
@@ -74,10 +73,24 @@ export function updateNavigation() {
   }
 
   if (userLabel) {
-    userLabel.hidden = !loggedIn;
+    // `getUser()` returns null on a payload that will not decode while `isLoggedIn()` is still true, because the token string exists.
+    // Hiding on both leaves an empty anchor out of the tab order instead of in it.
+    userLabel.hidden = !loggedIn || !user;
     // Fall back to the email for tokens issued before usernames existed.
     if (loggedIn && user) {
       userLabel.textContent = user.username || user.email;
+
+      // Since phase 11 this label is the way to your own shelf.
+      //
+      // Only when there is a real username to link to: the fallback above can put an email on screen, and an email in an href would build an address for a curator who cannot exist.
+      // Such a token keeps the label and loses the link, which is the right way round - the name still shows.
+      if (userLabel instanceof HTMLAnchorElement) {
+        if (user.username) {
+          userLabel.href = `/u/${encodeURIComponent(user.username)}`;
+        } else {
+          userLabel.removeAttribute("href");
+        }
+      }
     }
   }
 }
