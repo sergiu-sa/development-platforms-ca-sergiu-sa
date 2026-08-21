@@ -111,7 +111,7 @@ describe("buildCuratorPage", () => {
   });
 
   it("inlines the null it looked up, so the client need not ask again", () => {
-    // A resolved "nobody has that name" is an answer. Without it on the page the client cannot tell it from "we could not ask", and spends a second function invocation and a second round trip finding out; 
+    // A resolved "nobody has that name" is an answer. Without it on the page the client cannot tell it from "we could not ask", and spends a second function invocation and a second round trip finding out;
     // on every mistyped or scanned address.
     const html = buildCuratorPage({
       lookup: { state: "missing" },

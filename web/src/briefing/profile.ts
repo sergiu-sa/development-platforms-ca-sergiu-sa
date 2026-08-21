@@ -53,7 +53,7 @@ export function curatorHeadMarkup(
     (shelf.total > 0
       ? `<p class="prof-facts m">${facts.join("")}</p>`
       : // No facts line when there is nothing to state. "0 briefings filed" reads like a broken template, and the message below already says it in words.
-      // The rule the line carried moves with it.
+        // The rule the line carried moves with it.
         "") +
     `</header>`
   );
