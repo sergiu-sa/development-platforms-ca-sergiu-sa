@@ -52,7 +52,13 @@ const ABSOLUTE_MIN_PX = 12;
  * Selectors allowed to set a size between ABSOLUTE_MIN_PX and PROSE_MIN_PX.
  * Furniture only - labels, slugs, timestamps, buttons, status. Adding to this list is the deliberate act the test exists to force.
  */
-const FURNITURE_SELECTORS = [".m"];
+const FURNITURE_SELECTORS = [
+  ".m",
+  // The "!" in the mark beside a form error.
+  // A glyph in a bordered box, at the same 12px the rest of the furniture uses, and the sentence it introduces is full-size prose beside it.
+  // It is the mark half of "colour is never the only signal", not something anybody reads.
+  ".auth-error::before",
+];
 
 /**
  * Keyframes allowed to animate opacity below the floor.

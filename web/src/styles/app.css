@@ -103,6 +103,34 @@ Set in one class so the floor cannot be undercut in a one-off rule. 12px is the 
   line-height: 1;
 }
 
+/* A link inside a sentence gets an underline.
+   Tailwind's preflight sets `a { color: inherit; text-decoration: inherit }`, so an anchor in prose inherits body ink and no decoration and is left identifiable only by where it happens to sit;
+    which is the failure WCAG 1.4.1 describes, and it is not a colour problem, because there is no signal at all to lean on.
+
+   Deliberately not blue.
+   The two accents are a semantic system - red is the machine's clock, blue is the reader's hand - and "there is another page over here" is neither.
+   Blue arrives on hover as the pointer's own feedback, which is the same thing the shelf card and the briefing byline do.
+
+   Scoped to prose. Controls (.btn, .nav-link, .chip, the cards) are drawn as objects and say what they are without one. */
+.note a,
+.auth-foot a,
+.auth-hint a,
+.briefing-message .m a,
+.briefing-byline {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.note a:hover,
+.auth-foot a:hover,
+.auth-hint a:hover,
+.briefing-message .m a:hover,
+.briefing-byline:hover {
+  text-decoration-color: var(--color-blue);
+  text-decoration-thickness: 2px;
+}
+
 /* The dimmest any text on this site is allowed to go, and only for genuinely secondary text. Ink at .72 measures 7.37:1 on paper and 7.01:1 on paper-2.
    Never stack it with anything. */
 .quiet {
@@ -1126,65 +1154,225 @@ The edge and the strike-through are the graphic half; the word in .row-state is 
 }
 
 /* ---- auth pages ----
-   Repointed to the new tokens, not restyled: phase 11 does the real pass. */
+   The pitch and the form. Two columns at width, one below 60rem.
 
-.auth-page {
-  max-width: 26rem;
-  margin: 0 auto;
-  padding: 4rem 1.5rem 6rem;
+   These were the last two pages still wearing the old page-shell nav, which made them read as a different product at the one moment somebody is deciding whether an account is worth it. The pitch is there for the same reason: a sign-in page is a decision point, and the strongest copy this product has was not on it. */
+
+.auth-body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-split {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+}
+
+.auth-pitch {
+  border-right: 1px solid var(--color-rule);
+  padding: clamp(3rem, 7vw, 6rem) clamp(1.5rem, 4vw, 4rem);
+  display: grid;
+  align-content: center;
+  gap: 1.75rem;
+}
+
+/* The one-sentence test, set in the display voice.
+   Lighter and wider than a headline, which is the axis contrast that carries the curator's voice on /b/:slug - this is the product speaking in the same register. */
+.auth-say {
+  font-family: var(--font-grot);
+  font-variation-settings:
+    "opsz" 96,
+    "wght" 300,
+    "wdth" 100;
+  letter-spacing: -0.02em;
+  font-size: clamp(1.7rem, 3.2vw, 2.9rem);
+  line-height: 1.12;
+  margin: 0;
+  max-width: 18ch;
+}
+
+/* The second clause takes blue because it is the reader's hand; the first stays plain ink because it is not.
+   The prototype dimmed the first clause to 0.55 to separate them.
+   That is below the 0.72 floor, ink at 0.55 measures 3.92:1 and fails AA;
+    and it was redundant on top of that, because the colour already does the separating.
+   Blue on paper measures 6.32:1, so the coloured half clears the floor too. */
+.auth-say-you {
+  color: var(--color-blue);
+}
+
+.auth-steps {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-width: 34ch;
+}
+
+.auth-step {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.auth-side {
+  display: grid;
+  align-content: center;
+  padding: clamp(3rem, 7vw, 6rem) clamp(1.5rem, 4vw, 4rem);
+  max-width: 32rem;
 }
 
 .auth-h {
-  font-size: 1.75rem;
-  font-variation-settings:
-    "wdth" 90,
-    "wght" 700,
-    "opsz" 28;
-  letter-spacing: -0.02em;
+  font-size: clamp(2rem, 3.4vw, 2.6rem);
+  line-height: 1.02;
+  margin: 0 0 0.75rem;
+}
+
+.auth-lede {
   margin: 0 0 2rem;
 }
 
 .auth-form {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 1.25rem;
 }
 
 .auth-label {
   display: block;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.45rem;
 }
 
+/* A ruled line rather than a box.
+   Every form on the internet is boxed fields; a ruled line is what a form on paper looks like, and hairlines are what the rest of this product is drawn with.
+   The global :focus-visible still draws the full 2px blue outline, so focus is never subtler than it was. */
 .auth-input {
   display: block;
   width: 100%;
-  background: var(--color-paper-2);
-  border: 1px solid var(--color-rule);
-  padding: 0.65rem 0.75rem;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--color-ink);
+  border-radius: 0;
+  padding: 0.55rem 0.1rem;
   font-family: var(--font-grot);
-  font-size: 16px;
+  /* 16px minimum, or iOS Safari zooms the page on focus. */
+  font-size: 17px;
   color: var(--color-ink);
 }
 
-.auth-hint {
-  font-size: 15px;
-  margin-top: 0.4rem;
+/* The floor applies here too.
+   This was 0.45 on the argument that a placeholder is a hint rather than content and every field carries a real label anywa;
+    and contrast.test.ts refused it, correctly.
+   Nothing exempts ::placeholder, a placeholder is text a sighted reader reads, and 0.45 measures about 2.8:1.
+   At the floor it is still plainly lighter than typed input, which is full ink. */
+.auth-input::placeholder {
+  color: var(--color-ink);
+  opacity: 0.72;
 }
 
-/* Errors state what happened. red-ink because this is a word, and it is the only colour this form needs to speak with. */
+.auth-input:focus {
+  border-bottom-color: var(--color-blue);
+}
+
+/* Composed in the markup as `auth-hint note quiet`, so the 15px floor and the 0.72 opacity come from the primitives that own them.
+This rule carries only the spacing that is its own. */
+.auth-hint {
+  margin: 0.5rem 0 0;
+}
+
+/* The address a username becomes, shown as the machine's own text.
+   It keeps the hint's own size: it sits inside a sentence, so it is prose and the 15px floor applies to it, whatever face it is set in.
+   13px looked right beside the mono and was caught for exactly that reason. */
+.auth-hint-path {
+  font-family: var(--font-mono);
+  font-variation-settings:
+    "wdth" 80,
+    "wght" 500;
+}
+
+/* Errors carry the mark AND the word, because colour is never the only signal.
+   red-ink rather than red: these are glyphs.
+
+   The layout is scoped to :not(.hidden) deliberately. Both `.auth-error` and Tailwind's `.hidden` are single-class selectors, so source order decides, and this file is imported after the utilities - a bare `display: flex` here beats `display: none` there and the empty error's "!" mark rendered on every fresh  form.
+   Measured in a browser; the markup and the JavaScript were both correct. */
 .auth-error {
-  font-size: 15px;
+  gap: 0.6rem;
+  align-items: baseline;
   color: var(--color-red-ink);
 }
 
+.auth-error:not(.hidden) {
+  display: flex;
+}
+
+.auth-error::before {
+  content: "!";
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variation-settings:
+    "wdth" 80,
+    "wght" 800;
+  border: 1px solid currentColor;
+  padding: 0.15rem 0.35rem;
+  line-height: 1;
+  flex: none;
+}
+
 .auth-success {
-  font-size: 15px;
   color: var(--color-blue);
 }
 
+/* An expired session is not an error the reader made, so it is not drawn as one.
+A recessed band with a red edge: the clock ran out, and time is the machine's colour. */
+.auth-expired {
+  display: grid;
+  gap: 0.4rem;
+  background: var(--color-paper-2);
+  border-left: 3px solid var(--color-red);
+  padding: 0.85rem 1rem;
+  margin: 0 0 1.75rem;
+}
+
+.auth-submit {
+  justify-self: start;
+  margin-top: 0.5rem;
+}
+
 .auth-foot {
-  margin-top: 2rem;
-  font-size: 15px;
+  margin: 2rem 0 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-rule);
+}
+
+@media (max-width: 60rem) {
+  .auth-split {
+    grid-template-columns: 1fr;
+  }
+
+  /* The pitch goes above the form and loses its steps.
+  On a phone, four lines of manifesto above the fold is four lines between somebody and the thing they came here to do. */
+  .auth-pitch {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-rule);
+    padding: 2.5rem 1.5rem;
+    gap: 1.25rem;
+  }
+
+  .auth-say {
+    font-size: 1.6rem;
+    max-width: none;
+  }
+
+  .auth-steps {
+    display: none;
+  }
+
+  .auth-side {
+    padding: 2.5rem 1.5rem 4rem;
+    max-width: none;
+  }
 }
 
 /* ---- the desk ----
@@ -1615,7 +1803,8 @@ Blue is the reader's hand everywhere in this product, and following a link to th
 Blue is the reader's hand throughout this product, and a briefing is something somebody chose to file.
 Decorative rather than informative - the word "Briefing" beside it carries the meaning - so it is hidden from assistive technology instead of being given a label that would say the same thing twice. */
 .briefing-mark,
-.build-mark {
+.build-mark,
+.prof-mark {
   width: 7px;
   height: 7px;
   flex: none;
@@ -1626,7 +1815,10 @@ Decorative rather than informative - the word "Briefing" beside it carries the m
 Written once because they are one role rather than three - three copies of the same axis triple is how a voice drifts, and two of these had already picked different tracking on the day they were written. Size and leading stay per use. */
 .briefing-title,
 .shelf-title,
-.bcard-title {
+.bcard-title,
+.prof-name,
+.prof-lede-title,
+.auth-h {
   font-family: var(--font-grot);
   font-variation-settings:
     "opsz" 96,
@@ -1644,7 +1836,8 @@ Written once because they are one role rather than three - three copies of the s
 /* Held a step heavier than the note: at the prose floor a light weight goes thin enough to read as low contrast, which is a legibility problem rather than a taste one.
 Shared with the card's intro, which is the same sentence doing the same job - they were written minutes apart and had already picked different leading. */
 .briefing-intro,
-.bcard-intro {
+.bcard-intro,
+.prof-lede-intro {
   font-variation-settings:
     "opsz" 14,
     "wght" 400,
@@ -1652,6 +1845,13 @@ Shared with the card's intro, which is the same sentence doing the same job - th
   font-size: 15px;
   line-height: 1.55;
   margin: 0;
+}
+
+/* One step up from the card's intro: this is the only briefing on the page drawn at full size, and 15px under a 3rem title reads as a caption. */
+.prof-lede-intro {
+  font-size: 17px;
+  line-height: 1.5;
+  max-width: 56ch;
 }
 
 .briefing-entry {
@@ -1720,9 +1920,7 @@ Shared with the card's intro, which is the same sentence doing the same job - th
 
 /* Shares the card column's width and padding, so the header and the cards sit on one gutter rather than two. */
 .shelf-head {
-  max-width: 60rem;
-  margin: 0 auto;
-  padding: clamp(2.5rem, 6vw, 4.5rem) 1.25rem 1.5rem;
+  padding-block: clamp(2.5rem, 6vw, 4.5rem) 1.5rem;
   display: grid;
   gap: 0.9rem;
 }
@@ -1739,9 +1937,7 @@ Shared with the card's intro, which is the same sentence doing the same job - th
 
 .bcards {
   list-style: none;
-  margin: 0 auto;
-  padding: 0 1.25rem 6rem;
-  max-width: 60rem;
+  padding-block: 0 6rem;
   display: grid;
 }
 
@@ -1806,6 +2002,162 @@ Shared with the card's intro, which is the same sentence doing the same job - th
   align-items: baseline;
 }
 
+/* The shelf's content column, declared once for everything that sits on it.
+   Seven rules were each restating `max-width: 60rem; margin: 0 auto` with a 1.25rem gutter, and their comments each claimed to be "sharing the card column's width";
+    which is exactly the arrangement where changing the width means seven edits and missing one puts a section on a different gutter than the cards beside it.
+    Each rule below keeps only its block padding. */
+.shelf-head,
+.bcards,
+.prof-head,
+.prof-lede,
+.prof-rest,
+.prof-drafts,
+.pager {
+  max-width: 60rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+/* ---- a curator's shelf ----
+   /u/:username. The same cards as /briefings, handed one person's work, with the newest one drawn large above them.
+
+   The lede is what makes this a front page rather than a filtered list, and it is the move the desk already makes with its lead story.
+   Direction A of the prototype was this page without it, and it read as the shelf with a different title on it. */
+
+.prof-head {
+  padding-block: clamp(2.5rem, 6vw, 4.5rem) 1.5rem;
+}
+
+/* The kicker names what kind of page this is, the way the briefing's does.
+   Its mark is blue rather than red: a curator is somebody's hand, not the machine's clock, which is the whole of the two-accent rule. */
+.prof-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.9rem;
+}
+
+/* The name is the page.
+   A name rather than a sentence, so it is tracked tighter than the shared voice above - the same reason the wordmark is tighter still. `overflow-wrap` because a 30-character username is legal and has no space in it to break. */
+.prof-name {
+  letter-spacing: -0.03em;
+  font-size: clamp(2.4rem, 6vw, 4rem);
+  line-height: 1;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.prof-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.1rem;
+  align-items: baseline;
+  margin: 1.1rem 0 0;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--color-rule);
+}
+
+.prof-lede {
+  padding-block: 0 0.5rem;
+}
+
+/* A full rule rather than a hairline: this is the top of the page's content, and the cards below use the hairline to separate one from the next. */
+.prof-lede-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  border-top: 1px solid var(--color-ink);
+  padding-top: 1.25rem;
+}
+
+.prof-lede-shot {
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  object-fit: cover;
+  object-position: 50% 30%;
+  background: var(--color-paper-3);
+  display: block;
+}
+
+.prof-lede-words {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1.1rem 0 1.5rem;
+}
+
+.prof-lede-title {
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  line-height: 1.03;
+}
+
+.prof-lede-link:hover .prof-lede-title {
+  text-decoration: underline;
+  text-decoration-color: var(--color-blue);
+  text-underline-offset: 5px;
+}
+
+.prof-rest {
+  padding-block: 1.5rem 0;
+}
+
+/* A real h2, so the page has an outline and the lede can be skipped past.
+   It wears .m, so it needs the browser's heading margins and weight taken off rather than a size of its own. */
+.prof-earlier {
+  margin: 0;
+  font-weight: inherit;
+}
+
+/* Your own drafts, and nobody else's business.
+   Recessed with a blue edge rather than ruled like everything around it, so it reads as an aside on the page rather than as another thing filed on it.
+   Blue because a draft is the reader's own hand.
+   The outer box is drawn empty on every profile and filled only on your own, so it must have no height of its own. */
+.prof-drafts {
+  padding-block: 0;
+}
+
+.prof-drafts-in {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  background: var(--color-paper-2);
+  border-left: 3px solid var(--color-blue);
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+.prof-drafts-n {
+  margin-right: auto;
+}
+
+/* ---- the pager ----
+   Shared by the shelf and a curator's page. */
+
+/* Three columns rather than a flex row, because the end of the run draws nothing at all rather than a dimmed control - so a cell has to hold the space or the counter would slide off centre on the first and last pages.
+  A dimmed span was the first attempt and contrast.test.ts refused it: visible text at 0.4 against a 0.72 floor, and not the inactive *control* WCAG
+   exempts. */
+.pager {
+  padding-block: 1.5rem 6rem;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pager-newer {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.pager-where {
+  grid-column: 2;
+}
+
+.pager-older {
+  grid-column: 3;
+  justify-self: end;
+}
+
 /* ---- narrow widths ----
    The two fixed bars must not wrap, so what they carry is dropped in order of how little it costs:
    the dateline first, then the tick gauge, then the long labels shorten.
@@ -1856,6 +2208,11 @@ Shared with the card's intro, which is the same sentence doing the same job - th
   }
 
   .bcard-shot {
+    aspect-ratio: 16 / 9;
+  }
+
+  /* A 16/7 letterbox at this width is a strip about 50px tall. */
+  .prof-lede-shot {
     aspect-ratio: 16 / 9;
   }
 
@@ -1958,8 +2315,27 @@ Shared with the card's intro, which is the same sentence doing the same job - th
     display: none;
   }
 
+  /* Was `display: none` until phase 11, because this was a label.
+     It is the link to your own profile now, and a nav item you cannot reach on  a phone is not nav - so it stays and is capped instead.
+     A 30-character username is legal and would otherwise break the one rule this bar has, which is that it never wraps. */
   .top-nav-user {
-    display: none;
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Side by side at this width the sentence exactly fills the row and the button drops alone underneath it, which rags badly.
+  Three lines is calmer than two and a half.
+  Found at 390 in the prototype, not in code. */
+  .prof-drafts-in {
+    display: grid;
+    justify-items: start;
+    gap: 0.65rem;
+  }
+
+  .prof-drafts-n {
+    margin-right: 0;
   }
 
   .rail-n {
