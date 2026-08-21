@@ -12,6 +12,22 @@ export function dayMonth(date: Date): string {
   return DAY_MONTH.format(date);
 }
 
+/**
+ * "4 Aug 2026". The same date with its year, for anything that can span more than the current one.
+ *
+ * A curator's shelf and a briefing card both do: the wire is always today and the desk is always one day, but somebody's filed work accumulates, and "4 Aug" on a two-year-old briefing is a date that quietly means nothing.
+ * Built once for the reason above it.
+ */
+const DAY_MONTH_YEAR = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+export function dayMonthYear(iso: string): string {
+  return DAY_MONTH_YEAR.format(new Date(iso));
+}
+
 export function relativeTime(iso: string, now: Date = new Date()): string {
   // Whole minutes elapsed, not the nearest minute:
   // Math.round(0.5) rounds up to 1, which would push a story published 30 seconds ago out of "just now" and into "1m ago".

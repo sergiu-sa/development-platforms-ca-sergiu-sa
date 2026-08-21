@@ -3,66 +3,117 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login - Lede</title>
+    <title>Sign in - Lede</title>
   </head>
-  <body class="min-h-screen">
-    <nav class="border-b border-rule">
-      <div class="page-shell py-4 flex justify-between items-center">
-        <a href="/index.html" class="word">Lede<b>.</b></a>
-        <div class="m flex items-center gap-4">
-          <a href="/index.html" class="nav-link">Home</a>
-          <a href="/login.html" id="nav-login" class="nav-link">Login</a>
-          <a href="/register.html" id="nav-register" class="nav-link"
-            >Register</a
-          >
-          <span id="nav-user" class="quiet" hidden></span>
-          <button id="nav-logout" class="nav-link" hidden>Logout</button>
-        </div>
-      </div>
-    </nav>
-
-    <main class="auth-page">
-      <h1 class="auth-h">Sign in</h1>
-
-      <form id="login-form" class="auth-form">
-        <div>
-          <label for="email" class="auth-label m quiet">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            required
-            autocomplete="email"
-            class="auth-input"
-            placeholder="you@example.com"
-          />
-        </div>
-
-        <div>
-          <label for="password" class="auth-label m quiet">Password</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            required
-            autocomplete="current-password"
-            class="auth-input"
-            placeholder="Password"
-          />
-        </div>
-
-        <p id="error-message" class="auth-error hidden" role="alert"></p>
-
-        <button type="submit" class="btn btn-blue m self-start mt-2">
-          Sign in
-        </button>
-      </form>
-
-      <p class="auth-foot">
-        No account?
+  <body class="auth-body">
+    <!-- The same bar every other page carries.
+     These two were the last pages still wearing the old nav, which made them read as a different product at the one moment somebody is deciding whether to bother. -->
+    <div class="deskbar">
+      <a href="/index.html" class="word">Lede<b>.</b></a>
+      <a href="/index.html" class="btn m deskbar-back">
+        <span aria-hidden="true">&larr;</span>
+        <span>Back to the wire</span>
+      </a>
+      <nav class="top-nav m" aria-label="Account">
         <a href="/register.html" class="nav-link">Register</a>
-      </p>
+      </nav>
+    </div>
+
+    <main class="auth-split">
+      <!-- The product's own sentence, which is the strongest copy it has, on the one page where somebody is deciding whether an account is worth it.
+       No image and no gradient: type on paper is what this site is. -->
+      <div class="auth-pitch">
+        <p class="auth-say">
+          The wire is somebody else's.
+          <span class="auth-say-you"
+            >The desk is yours. The briefing is what you wrote.</span
+          >
+        </p>
+        <ol class="auth-steps">
+          <li class="auth-step">
+            <span class="m quiet">01</span>
+            <span class="note"
+              >Triage the wire one story at a time. Skip or save.</span
+            >
+          </li>
+          <li class="auth-step">
+            <span class="m quiet">02</span>
+            <span class="note"
+              >What you save composes your desk, a private edition of the
+              day.</span
+            >
+          </li>
+          <li class="auth-step">
+            <span class="m quiet">03</span>
+            <span class="note"
+              >File a briefing from it, in your words, at a public
+              address.</span
+            >
+          </li>
+        </ol>
+      </div>
+
+      <div class="auth-side">
+        <!-- An expired session is not an error the reader made, so it is not drawn as one.
+         Shown by pages/login.ts when api.ts sends ?expired=1. -->
+        <div id="expired-notice" class="auth-expired" hidden>
+          <p class="m">Session expired</p>
+          <p class="note">
+            Sign in again and we will put you back where you were.
+          </p>
+        </div>
+
+        <h1 class="auth-h">Sign in</h1>
+        <p class="auth-lede note quiet">
+          Your desk and your briefings are waiting.
+        </p>
+
+        <form id="login-form" class="auth-form">
+          <div>
+            <label for="email" class="auth-label m quiet">Email</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              autocomplete="email"
+              class="auth-input"
+              placeholder="you@example.com"
+            />
+          </div>
+
+          <div>
+            <label for="password" class="auth-label m quiet">Password</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              autocomplete="current-password"
+              class="auth-input"
+              placeholder="Your password"
+            />
+          </div>
+
+          <p id="error-message" class="auth-error note hidden" role="alert"></p>
+
+          <button type="submit" class="btn btn-blue m auth-submit">
+            Sign in
+          </button>
+        </form>
+
+        <p class="auth-foot note">
+          No account? <a href="/register.html">Register</a>. It takes one field
+          more than this.
+        </p>
+      </div>
     </main>
+
+    <footer class="foot m quiet">
+      <span>Lede</span>
+      <span>Stories &copy; Guardian News &amp; Media</span>
+      <span aria-hidden="true">-30-</span>
+    </footer>
 
     <script type="module" src="/src/pages/login.ts"></script>
   </body>

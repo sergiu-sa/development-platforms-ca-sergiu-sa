@@ -43,3 +43,16 @@ export interface BriefingSummary {
 export interface Briefing extends BriefingSummary {
   items: BriefingItem[];
 }
+
+/**
+ * One curator's shelf: what `GET /api/curators/:username` returns, and what the server inlines into the document for `/u/:username`.
+ *
+ * Published briefings only. The endpoint has no branch on who is asking, so a curator sees the same shelf here as a stranger does; their drafts are a different question asked with a token.
+ */
+export interface CuratorShelf {
+  username: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  briefings: BriefingSummary[];
+}

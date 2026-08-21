@@ -3,104 +3,146 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Register - Lede</title>
+    <title>Create an account - Lede</title>
   </head>
-  <body class="min-h-screen">
-    <nav class="border-b border-rule">
-      <div class="page-shell py-4 flex justify-between items-center">
-        <a href="/index.html" class="word">Lede<b>.</b></a>
-        <div class="m flex items-center gap-4">
-          <a href="/index.html" class="nav-link">Home</a>
-          <a href="/login.html" id="nav-login" class="nav-link">Login</a>
-          <a href="/register.html" id="nav-register" class="nav-link"
-            >Register</a
+  <body class="auth-body">
+    <div class="deskbar">
+      <a href="/index.html" class="word">Lede<b>.</b></a>
+      <a href="/index.html" class="btn m deskbar-back">
+        <span aria-hidden="true">&larr;</span>
+        <span>Back to the wire</span>
+      </a>
+      <nav class="top-nav m" aria-label="Account">
+        <a href="/login.html" class="nav-link">Sign in</a>
+      </nav>
+    </div>
+
+    <main class="auth-split">
+      <div class="auth-pitch">
+        <p class="auth-say">
+          The wire is somebody else's.
+          <span class="auth-say-you"
+            >The desk is yours. The briefing is what you wrote.</span
           >
-          <span id="nav-user" class="quiet" hidden></span>
-          <button id="nav-logout" class="nav-link" hidden>Logout</button>
-        </div>
+        </p>
+        <ol class="auth-steps">
+          <li class="auth-step">
+            <span class="m quiet">01</span>
+            <span class="note"
+              >Triage the wire one story at a time. Skip or save.</span
+            >
+          </li>
+          <li class="auth-step">
+            <span class="m quiet">02</span>
+            <span class="note"
+              >What you save composes your desk, a private edition of the
+              day.</span
+            >
+          </li>
+          <li class="auth-step">
+            <span class="m quiet">03</span>
+            <span class="note"
+              >File a briefing from it, in your words, at a public
+              address.</span
+            >
+          </li>
+        </ol>
       </div>
-    </nav>
 
-    <main class="auth-page">
-      <h1 class="auth-h">Create account</h1>
+      <div class="auth-side">
+        <h1 class="auth-h">Create an account</h1>
+        <p class="auth-lede note quiet">
+          Two minutes on the wire, and what you keep is yours.
+        </p>
 
-      <form id="register-form" class="auth-form">
-        <div>
-          <label for="email" class="auth-label m quiet">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            required
-            autocomplete="email"
-            class="auth-input"
-            placeholder="you@example.com"
-          />
-        </div>
+        <form id="register-form" class="auth-form">
+          <div>
+            <label for="email" class="auth-label m quiet">Email</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              autocomplete="email"
+              class="auth-input"
+              placeholder="you@example.com"
+            />
+            <p class="auth-hint note quiet">
+              Used to sign in. Never shown to anybody.
+            </p>
+          </div>
 
-        <div>
-          <label for="username" class="auth-label m quiet">Username</label>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            required
-            minlength="3"
-            maxlength="30"
-            pattern="[a-zA-Z0-9_-]+"
-            autocomplete="username"
-            class="auth-input"
-            placeholder="How you'll appear on articles"
-          />
-          <p class="auth-hint">
-            Letters, numbers, hyphens and underscores. Shown publicly instead of
-            your email.
-          </p>
-        </div>
+          <div>
+            <label for="username" class="auth-label m quiet">Username</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              required
+              minlength="3"
+              maxlength="30"
+              pattern="[a-zA-Z0-9_-]+"
+              autocomplete="username"
+              class="auth-input"
+              placeholder="sergiu"
+            />
+            <!-- The username has an address behind it since phase 11, so this can say what it is for rather than only what characters it takes. -->
+            <p class="auth-hint note quiet">
+              Your byline, and the address of your shelf:
+              <span class="auth-hint-path">/u/your-name</span>. Letters,
+              numbers, hyphens and underscores.
+            </p>
+          </div>
 
-        <div>
-          <label for="password" class="auth-label m quiet">Password</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            required
-            minlength="6"
-            autocomplete="new-password"
-            class="auth-input"
-            placeholder="At least 6 characters"
-          />
-        </div>
+          <div>
+            <label for="password" class="auth-label m quiet">Password</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              minlength="6"
+              autocomplete="new-password"
+              class="auth-input"
+              placeholder="At least 6 characters"
+            />
+          </div>
 
-        <div>
-          <label for="confirm-password" class="auth-label m quiet"
-            >Confirm password</label
-          >
-          <input
-            type="password"
-            id="confirm-password"
-            name="confirm-password"
-            required
-            minlength="6"
-            autocomplete="new-password"
-            class="auth-input"
-            placeholder="Confirm your password"
-          />
-        </div>
+          <div>
+            <label for="confirm-password" class="auth-label m quiet"
+              >Confirm password</label
+            >
+            <input
+              type="password"
+              id="confirm-password"
+              name="confirm-password"
+              required
+              minlength="6"
+              autocomplete="new-password"
+              class="auth-input"
+              placeholder="Type it again"
+            />
+          </div>
 
-        <p id="error-message" class="auth-error hidden" role="alert"></p>
-        <p id="success-message" class="auth-success hidden"></p>
+          <p id="error-message" class="auth-error note hidden" role="alert"></p>
+          <p id="success-message" class="auth-success note hidden"></p>
 
-        <button type="submit" class="btn btn-blue m self-start mt-2">
-          Create account
-        </button>
-      </form>
+          <button type="submit" class="btn btn-blue m auth-submit">
+            Create account
+          </button>
+        </form>
 
-      <p class="auth-foot">
-        Already have an account?
-        <a href="/login.html" class="nav-link">Login</a>
-      </p>
+        <p class="auth-foot note">
+          Already have one? <a href="/login.html">Sign in</a>.
+        </p>
+      </div>
     </main>
+
+    <footer class="foot m quiet">
+      <span>Lede</span>
+      <span>Stories &copy; Guardian News &amp; Media</span>
+      <span aria-hidden="true">-30-</span>
+    </footer>
 
     <script type="module" src="/src/pages/register.ts"></script>
   </body>

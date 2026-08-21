@@ -65,9 +65,22 @@ export interface ApiResult {
   body: any;
 }
 
+/**
+ * Whether a 401 on this call means "your session ended" or is just an answer.
+ *
+ * It is a session event for every page behind auth:
+ *  the reader was working and should be put back where they were.
+ * It is **not** on a public page making a background probe, where redirecting would yank a reader off a shelf they are allowed to read;
+ *  which is what the curator page's drafts count would have done to anybody arriving with a week-old token.
+ */
+interface RequestOptions {
+  redirectOnExpiry?: boolean;
+}
+
 async function request(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  { redirectOnExpiry = true }: RequestOptions = {}
 ): Promise<ApiResult> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -88,7 +101,12 @@ async function request(
     // A 401 while carrying a token means the token was rejected;
     // expired, revoked or malformed.
     // The /auth/ routes are excluded because there a 401 means "wrong password", which must show an inline error rather than bounce the user somewhere.
-    if (response.status === 401 && token && !endpoint.startsWith("/auth/")) {
+    if (
+      response.status === 401 &&
+      token &&
+      redirectOnExpiry &&
+      !endpoint.startsWith("/auth/")
+    ) {
       handleExpiredSession();
       return {
         status: response.status,
@@ -166,11 +184,27 @@ export async function getBriefing(slug: string): Promise<ApiResult> {
 /**
  * Filed briefings, newest first. Published only, whoever is asking.
  *
- * No page argument: the endpoint defaults to the first page and nothing here pages yet.
- * Phase 11's curator shelf can add one when it has somewhere to put the control.
+ * Page 1 is sent as no parameter at all rather than as `?page=1`, so the address of the first page is the bare one and a shared link to it does not carry a number somebody would have to think about.
  */
-export async function getBriefings(): Promise<ApiResult> {
-  return request("/briefings");
+export async function getBriefings(page = 1): Promise<ApiResult> {
+  return request(page > 1 ? `/briefings?page=${page}` : "/briefings");
+}
+
+/**
+ * One curator's filed briefings.
+ *
+ * Published only, and the endpoint has no branch on who is asking, so this returns the same shelf to the curator themselves as to a stranger.
+ * Their drafts come from `getMyBriefings` instead, which is a different question asked with a token.
+ *
+ * The whole `ApiResult`, because the page has to tell "no curator by that name" from "we could not ask", and those are different pages rather than different wordings.
+ */
+export async function getCurator(
+  username: string,
+  page = 1
+): Promise<ApiResult> {
+  const path = `/curators/${encodeURIComponent(username)}`;
+
+  return request(page > 1 ? `${path}?page=${page}` : path);
 }
 
 /**
@@ -194,8 +228,10 @@ export function isFinalRefusal(status: number): boolean {
  * The whole `ApiResult`, because the builder opens with this call and needs the status:
  * a 401 here is what redirects an expired session to sign-in, and it has to happen before any draft can be reported missing.
  */
-export async function getMyBriefings(): Promise<ApiResult> {
-  return request("/desk/briefings");
+export async function getMyBriefings(
+  options: RequestOptions = {}
+): Promise<ApiResult> {
+  return request("/desk/briefings", {}, options);
 }
 
 export async function createBriefing(

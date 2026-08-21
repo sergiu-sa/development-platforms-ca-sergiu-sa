@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  USERNAME_MAX,
+  USERNAME_MIN,
+  USERNAME_PATTERN,
+} from "../auth/auth.schema.js";
 
 /**
  * Upper bound on an id.
@@ -148,10 +153,20 @@ export const slugParamSchema = z.object({
 });
 
 /**
- * Usernames are compared case-insensitively everywhere else in this codebase, and the length matches the column.
+ * The shape a username can actually have, so a name that could never match is refused before it reaches Postgres.
+ *
+ * Held identical to `USERNAME_PATTERN` and the bounds in `auth.schema.ts`, which is what registration enforces;
+ *  a value outside them is not a curator anybody could have registered, so a lookup for it could only ever come back empty.
+ * It used to be "1 to 50 characters of anything", which was looser than the column and looser than the rule that fills it.
+ *
+ * Usernames are compared case-insensitively everywhere in this codebase, so no case is imposed here.
  */
 export const curatorParamSchema = z.object({
-  username: z.string().min(1).max(50),
+  username: z
+    .string()
+    .min(USERNAME_MIN)
+    .max(USERNAME_MAX)
+    .regex(USERNAME_PATTERN, "not a curator name"),
 });
 
 export const pageQuerySchema = z.object({
